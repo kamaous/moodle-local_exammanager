@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_exammanager';
-$plugin->version = 2026091700;
+$plugin->version = 2026091701;
 $plugin->requires  = 2019111800; // Moodle 3.9+.
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release = 'V9.0 PLUGINS DIRECTORY COMPLIANCE';
+$plugin->release = 'V9.0 Plugins directory compliance';
