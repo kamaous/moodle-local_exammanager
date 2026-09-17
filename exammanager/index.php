@@ -10,7 +10,6 @@ $PAGE->set_url(new moodle_url('/local/exammanager/index.php'));
 $PAGE->set_title(get_string('planning', 'local_exammanager'));
 $PAGE->set_heading(get_string('pluginname', 'local_exammanager'));
 
-$PAGE->requires->css('/local/exammanager/styles.css');
 $PAGE->requires->js_call_amd('local_exammanager/planning_dropzone', 'init');
 
 global $SESSION, $OUTPUT, $USER, $DB;

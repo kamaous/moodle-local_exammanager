@@ -9,7 +9,6 @@ $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/exammanager/history.php'));
 $PAGE->set_title(get_string('history', 'local_exammanager'));
 $PAGE->set_heading(get_string('pluginname', 'local_exammanager'));
-$PAGE->requires->css('/local/exammanager/styles.css');
 
 global $DB, $OUTPUT;
 

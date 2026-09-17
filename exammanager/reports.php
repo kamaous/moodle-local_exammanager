@@ -7,7 +7,6 @@ $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/exammanager/reports.php'));
 $PAGE->set_title(get_string('reports', 'local_exammanager'));
 $PAGE->set_heading(get_string('pluginname', 'local_exammanager'));
-$PAGE->requires->css('/local/exammanager/styles.css');
 global $DB, $OUTPUT;
 $roomconflicts = $DB->get_records_sql("SELECT room, timeopen, timeclose, COUNT(*) AS total FROM {local_exammanager_codes} WHERE room <> '' GROUP BY room, timeopen, timeclose HAVING COUNT(*) > 1 ORDER BY timeopen ASC");
 $teacherconflicts = $DB->get_records_sql("SELECT teacher, timeopen, timeclose, COUNT(*) AS total FROM {local_exammanager_codes} WHERE teacher <> '' GROUP BY teacher, timeopen, timeclose HAVING COUNT(*) > 1 ORDER BY timeopen ASC");

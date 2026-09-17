@@ -7,7 +7,6 @@ $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/exammanager/sessions.php'));
 $PAGE->set_title(get_string('sessions', 'local_exammanager'));
 $PAGE->set_heading(get_string('pluginname', 'local_exammanager'));
-$PAGE->requires->css('/local/exammanager/styles.css');
 echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
 echo \local_exammanager\output\navbar::render('sessions');

@@ -7,7 +7,6 @@ $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/exammanager/dashboard.php'));
 $PAGE->set_title(get_string('pluginname', 'local_exammanager'));
 $PAGE->set_heading(get_string('pluginname', 'local_exammanager'));
-$PAGE->requires->css('/local/exammanager/styles.css');
 $PAGE->requires->js(new moodle_url('https://cdn.jsdelivr.net/npm/chart.js'));
 global $DB, $OUTPUT;
 $totlexams = $DB->count_records('local_exammanager_codes');
