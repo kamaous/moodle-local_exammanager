@@ -38,14 +38,14 @@ $todaystart = strtotime(date('Y-m-d 00:00:00'));
 $todayend = strtotime(date('Y-m-d 23:59:59'));
 $todaysexams = $DB->count_records_select('local_exammanager_codes', 'timeopen >= :s AND timeopen <= :e', ['s' => $todaystart, 'e' => $todayend]);
 
-// Nombre total de questions sur l'ensemble des quiz programmés par le plugin.
+// Total number of questions across every quiz scheduled by the plugin.
 $totalquestions = (int)$DB->count_records_sql(
     "SELECT COUNT(qs.id)
        FROM {quiz_slots} qs
        JOIN {local_exammanager_codes} c ON c.quizid = qs.quizid"
 );
 
-// Étudiants (rôle étudiant uniquement) inscrits dans les cours touchés par le plugin.
+// Students (student role only) enrolled in the courses targeted by the plugin.
 $enrolledstudents = (int)$DB->count_records_sql(
     "SELECT COUNT(DISTINCT ra.userid)
        FROM {role_assignments} ra
@@ -56,7 +56,7 @@ $enrolledstudents = (int)$DB->count_records_sql(
     ['ctxcourse' => CONTEXT_COURSE]
 );
 
-// Nombre moyen d'utilisateurs ayant fait une tentative, par quiz programmé par le plugin.
+// Average number of users who made an attempt, per quiz scheduled by the plugin.
 $avgparticipantsraw = $DB->get_field_sql(
     "SELECT AVG(t.cnt)
        FROM (SELECT c.quizid, COUNT(DISTINCT qa.userid) AS cnt
@@ -66,8 +66,9 @@ $avgparticipantsraw = $DB->get_field_sql(
 );
 $avgparticipants = round((float)$avgparticipantsraw, 1);
 
-// Taux moyen de participation par cours : pour chaque cours touché par le plugin,
-// (étudiants distincts ayant tenté au moins un quiz programmé) / (étudiants inscrits), puis moyenne des taux.
+// Average participation rate per course: for each course targeted by the
+// plugin, (distinct students who attempted at least one scheduled quiz) /
+// (enrolled students), then average of those rates.
 $enrolledbycourse = $DB->get_records_sql(
     "SELECT ctx.instanceid AS courseid, COUNT(DISTINCT ra.userid) AS enrolled
        FROM {role_assignments} ra
@@ -98,7 +99,7 @@ foreach ($enrolledbycourse as $courseid => $info) {
 }
 $avgcourseratelabel = empty($rates) ? '-' : (round(array_sum($rates) / count($rates) * 100, 1) . ' %');
 
-// Durée moyenne (tentatives terminées, hors aperçus) sur les quiz programmés par le plugin.
+// Average duration (finished attempts, previews excluded) on quizzes scheduled by the plugin.
 $avgdurationraw = $DB->get_field_sql(
     "SELECT AVG(qa.timefinish - qa.timestart)
        FROM {quiz_attempts} qa
@@ -114,28 +115,54 @@ if ($avgdurationseconds <= 0) {
 } else {
     $avgdurationlabel = intdiv($avgdurationseconds, 3600) . ' h ' . str_pad((string)intdiv($avgdurationseconds % 3600, 60), 2, '0', STR_PAD_LEFT) . ' min';
 }
+$chartcanvasid = 'exammanager-chart';
+$PAGE->requires->js_call_amd('local_exammanager/dashboard_chart', 'init', [
+    $chartcanvasid,
+    [
+        get_string('totlexams', 'local_exammanager'),
+        get_string('roomsused', 'local_exammanager'),
+        get_string('teachersused', 'local_exammanager'),
+        get_string('todaysexams', 'local_exammanager'),
+    ],
+    [(int)$totlexams, (int)$roomsused, (int)$teachersused, (int)$todaysexams],
+]);
+
 echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
 echo \local_exammanager\output\navbar::render('dashboard');
-echo '<div class="local-exammanager-hero"><h2>' . get_string('pluginname', 'local_exammanager') . '</h2><div class="local-exammanager-muted">' . get_string('helptext', 'local_exammanager') . '</div><div class="local-exammanager-actions">';
-echo html_writer::link(new moodle_url('/local/exammanager/index.php'), get_string('quickprogram', 'local_exammanager'));
-echo html_writer::link(new moodle_url('/local/exammanager/activities.php'), get_string('activitiesplanning', 'local_exammanager'));
-echo html_writer::link(new moodle_url('/local/exammanager/calendar.php'), get_string('viewcalendar', 'local_exammanager'));
-echo html_writer::link(new moodle_url('/local/exammanager/reports.php'), get_string('reports', 'local_exammanager'));
-echo '</div></div>';
-echo '<div class="local-exammanager-grid">';
-foreach ([[get_string('totlexams', 'local_exammanager'), $totlexams],[get_string('roomsused', 'local_exammanager'), $roomsused],[get_string('teachersused', 'local_exammanager'), $teachersused],[get_string('todaysexams', 'local_exammanager'), $todaysexams],[get_string('totalquestions', 'local_exammanager'), $totalquestions],[get_string('enrolledstudents', 'local_exammanager'), $enrolledstudents],[get_string('avgparticipants', 'local_exammanager'), $avgparticipants],[get_string('avgcourseparticipation', 'local_exammanager'), $avgcourseratelabel],[get_string('avgtestduration', 'local_exammanager'), $avgdurationlabel]] as $metric) {
-    echo '<div class="local-exammanager-card"><h3>' . s($metric[0]) . '</h3><div class="metric">' . s((string)$metric[1]) . '</div></div>';
-}
-echo '</div>';
-echo '<div class="local-exammanager-panel"><h3 class="local-exammanager-sectiontitle">Graphique analytique</h3><canvas id="exammanager-chart" height="110"></canvas></div>';
-?>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('exammanager-chart');
-    new Chart(ctx, { type: 'bar', data: { labels: ['Examens','Salles','Surveillants','Aujourd’hui'], datasets: [{ label: 'ExamManager', data: [<?php echo (int)$totlexams; ?>, <?php echo (int)$roomsused; ?>, <?php echo (int)$teachersused; ?>, <?php echo (int)$todaysexams; ?>] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
-});
-</script>
-<?php
+echo $OUTPUT->render_from_template('local_exammanager/hero', [
+    'title' => get_string('pluginname', 'local_exammanager'),
+    'subtitle' => get_string('helptext', 'local_exammanager'),
+    'hasactions' => true,
+    'actions' => [
+        ['url' => (new moodle_url('/local/exammanager/index.php'))->out(false), 'label' => get_string('quickprogram', 'local_exammanager')],
+        ['url' => (new moodle_url('/local/exammanager/activities.php'))->out(false), 'label' => get_string('activitiesplanning', 'local_exammanager')],
+        ['url' => (new moodle_url('/local/exammanager/calendar.php'))->out(false), 'label' => get_string('viewcalendar', 'local_exammanager')],
+        ['url' => (new moodle_url('/local/exammanager/reports.php'))->out(false), 'label' => get_string('reports', 'local_exammanager')],
+    ],
+]);
+
+$metrics = [
+    [get_string('totlexams', 'local_exammanager'), $totlexams],
+    [get_string('roomsused', 'local_exammanager'), $roomsused],
+    [get_string('teachersused', 'local_exammanager'), $teachersused],
+    [get_string('todaysexams', 'local_exammanager'), $todaysexams],
+    [get_string('totalquestions', 'local_exammanager'), $totalquestions],
+    [get_string('enrolledstudents', 'local_exammanager'), $enrolledstudents],
+    [get_string('avgparticipants', 'local_exammanager'), $avgparticipants],
+    [get_string('avgcourseparticipation', 'local_exammanager'), $avgcourseratelabel],
+    [get_string('avgtestduration', 'local_exammanager'), $avgdurationlabel],
+];
+echo $OUTPUT->render_from_template('local_exammanager/metric_grid', [
+    'metrics' => array_map(function (array $metric): array {
+        return ['label' => $metric[0], 'value' => (string)$metric[1]];
+    }, $metrics),
+]);
+
+echo $OUTPUT->render_from_template('local_exammanager/chart_panel', [
+    'title' => get_string('analyticschart', 'local_exammanager'),
+    'canvasid' => $chartcanvasid,
+]);
+
 echo html_writer::end_div();
 echo $OUTPUT->footer();

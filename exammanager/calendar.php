@@ -35,48 +35,31 @@ $records = $DB->get_records('local_exammanager_codes', null, 'timeopen ASC');
 $events = [];
 foreach ($records as $r) {
     $events[] = [
-    'title' => $r->quizname . (!empty($r->room) ? ' [' . $r->room . ']' : ''),
-    'start' => date('c', (int)$r->timeopen),
-    'end' => date('c', (int)$r->timeclose),
-    'extendedProps' => [
-        'course' => $r->course_shortname,
-        'room' => $r->room,
-        'teacher' => $r->teacher,
-        'session' => $r->sessionname
-    ]
-];
+        'title' => $r->quizname . (!empty($r->room) ? ' [' . $r->room . ']' : ''),
+        'start' => date('c', (int)$r->timeopen),
+        'end' => date('c', (int)$r->timeclose),
+        'extendedProps' => [
+            'course' => $r->course_shortname,
+            'room' => $r->room,
+            'teacher' => $r->teacher,
+            'session' => $r->sessionname,
+        ],
+    ];
 }
+
+$calendarelementid = 'exammanager-fullcalendar';
+$locale = substr(current_language(), 0, 2);
+$PAGE->requires->js_call_amd('local_exammanager/exam_calendar', 'init', [$calendarelementid, $events, $locale]);
+
 echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
 echo \local_exammanager\output\navbar::render('calendar');
-echo '<div class="local-exammanager-hero"><h2>' . get_string('calendarview', 'local_exammanager') . '</h2><div class="local-exammanager-muted">FullCalendar interactif des examens</div></div>';
-echo '<div class="local-exammanager-panel local-exammanager-calendar-shell"><div id="exammanager-fullcalendar" style="min-height:700px;"></div></div>';
-?>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const calendarEl = document.getElementById('exammanager-fullcalendar');
-    const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        locale: 'fr',
-        height: 720,
-        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' },
-        events: <?php echo json_encode($events); ?>,
-        eventClick: function(info) {
-            const e = info.event, p = e.extendedProps || {};
-            let details = 'Quiz : ' + e.title + '\nDébut : ' + e.start.toLocaleString() + '\n';
-            if (e.end) {
-                details += 'Fin : ' + e.end.toLocaleString() + '\n';
-            }
-            details += 'Cours : ' + (p.course || '')
-                + '\nSalle : ' + (p.room || '')
-                + '\nSurveillant : ' + (p.teacher || '')
-                + '\nSession : ' + (p.session || '');
-            alert(details);
-        }
-    });
-    calendar.render();
-});
-</script>
-<?php
+echo $OUTPUT->render_from_template('local_exammanager/hero', [
+    'title' => get_string('calendarview', 'local_exammanager'),
+    'subtitle' => get_string('calendar_hero_subtitle', 'local_exammanager'),
+]);
+echo $OUTPUT->render_from_template('local_exammanager/calendar_panel', [
+    'elementid' => $calendarelementid,
+]);
 echo html_writer::end_div();
 echo $OUTPUT->footer();

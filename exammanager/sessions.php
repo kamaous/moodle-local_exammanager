@@ -32,6 +32,8 @@ $PAGE->set_heading(get_string('pluginname', 'local_exammanager'));
 echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
 echo \local_exammanager\output\navbar::render('sessions');
-echo '<div class="local-exammanager-panel"><p>Page sessions incluse. Créez et gérez vos sessions depuis cette page.</p></div>';
+echo $OUTPUT->render_from_template('local_exammanager/sessions', [
+    'message' => get_string('sessions_placeholder', 'local_exammanager'),
+]);
 echo html_writer::end_div();
 echo $OUTPUT->footer();

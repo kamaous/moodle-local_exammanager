@@ -1,0 +1,50 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_exammanager/hero
+
+    Page header banner with a title, a subtitle and optional action links.
+    Used at the top of every plugin page.
+
+    Classes required for JS: none.
+    Data attributes required for JS: none.
+
+    Context variables required for this template:
+    * title string Page title.
+    * subtitle string Page subtitle.
+    * hasactions boolean Whether the action links row should be shown.
+    * actions array List of {url, label} action links.
+
+    Example context (json):
+    {
+        "title": "Dashboard",
+        "subtitle": "Overview",
+        "hasactions": true,
+        "actions": [{"url": "#", "label": "Program exams"}]
+    }
+}}
+<div class="local-exammanager-hero">
+    <h2>{{title}}</h2>
+    <div class="local-exammanager-muted">{{subtitle}}</div>
+    {{#hasactions}}
+    <div class="local-exammanager-actions">
+        {{#actions}}
+        <a href="{{url}}">{{label}}</a>
+        {{/actions}}
+    </div>
+    {{/hasactions}}
+</div>

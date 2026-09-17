@@ -1,0 +1,37 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_exammanager/chart_panel
+
+    A panel containing a titled canvas element, used by the dashboard page
+    to host its Chart.js analytics chart. The chart itself is drawn by the
+    local_exammanager/dashboard_chart AMD module.
+
+    Classes required for JS: none.
+    Data attributes required for JS: none.
+
+    Context variables required for this template:
+    * title string Panel title.
+    * canvasid string Id attribute for the <canvas> element.
+
+    Example context (json):
+    {"title": "Analytics chart", "canvasid": "exammanager-chart"}
+}}
+<div class="local-exammanager-panel">
+    <h3 class="local-exammanager-sectiontitle">{{title}}</h3>
+    <canvas id="{{canvasid}}" height="110"></canvas>
+</div>
