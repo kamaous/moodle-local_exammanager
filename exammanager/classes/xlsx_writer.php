@@ -165,10 +165,10 @@ Target="worksheets/sheet1.xml"/>
 
             if (!$file->isDir()) {
 
-                $filePath = $file->getRealPath();
-                $relativePath = substr($filePath, strlen($base) + 1);
+                $entrypath = $file->getRealPath();
+                $relativepath = substr($entrypath, strlen($base) + 1);
 
-                $zip->addFile($filePath, $relativePath);
+                $zip->addFile($entrypath, $relativepath);
             }
         }
 

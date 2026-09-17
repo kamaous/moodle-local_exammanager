@@ -1,6 +1,8 @@
 <?php
 $string['pluginname'] = 'Soft manager by KAMA';
 $string['title'] = 'Soft manager by KAMA';
+$string['exammanager:manage'] = 'Manage exam scheduling in Soft manager';
+$string['privacy:metadata'] = 'The Soft manager plugin does not store any personal data. It only reads existing course and quiz metadata to bulk-schedule quiz opening/closing dates, time limits and access codes.';
 $string['dashboard'] = 'Dashboard';
 $string['primarynavlabel'] = 'Soft manager';
 $string['planning'] = 'Programming';
