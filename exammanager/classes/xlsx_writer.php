@@ -28,14 +28,14 @@ defined('MOODLE_INTERNAL') || die();
 class xlsx_writer {
 
     /*
-    ECHAPPE LES CARACTERES XML
+    ESCAPE XML CHARACTERS
     */
     private static function xml_escape(string $value): string {
         return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 
     /*
-    NOM DES COLONNES EXCEL (A,B,C...)
+    EXCEL COLUMN NAMES (A, B, C...)
     */
     private static function col_name(int $index): string {
 
@@ -51,12 +51,12 @@ class xlsx_writer {
     }
 
     /*
-    CREATION FICHIER XLSX
+    CREATE THE XLSX FILE
     */
     public static function write(array $headers, array $rows, string $filepath, string $sheetname = 'Examens'): void {
 
         if (!class_exists('ZipArchive')) {
-            throw new \moodle_exception('Extension ZipArchive manquante.');
+            throw new \moodle_exception(get_string('zipextensionmissing', 'local_exammanager'));
         }
 
         $tmpdir = make_request_directory();
@@ -71,7 +71,7 @@ class xlsx_writer {
         mkdir($base . '/xl/worksheets');
 
         /*
-        CONTENT TYPES
+        CONTENT TYPES DESCRIPTOR
         */
         file_put_contents($base . '/[Content_Types].xml',
 '<?xml version="1.0" encoding="UTF-8"?>
@@ -119,7 +119,7 @@ Target="worksheets/sheet1.xml"/>
 </Relationships>');
 
         /*
-        CREATION DU CONTENU EXCEL
+        BUILD THE EXCEL WORKSHEET CONTENT
         */
         $xml = '<?xml version="1.0" encoding="UTF-8"?>';
         $xml .= '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
@@ -142,7 +142,7 @@ Target="worksheets/sheet1.xml"/>
         $xml .= '</row>';
 
         /*
-        DONNEES
+        DATA ROWS
         */
         $rowindex = 2;
 
@@ -170,12 +170,12 @@ Target="worksheets/sheet1.xml"/>
         file_put_contents($base . '/xl/worksheets/sheet1.xml', $xml);
 
         /*
-        CREATION ZIP
+        CREATE THE ZIP ARCHIVE
         */
         $zip = new \ZipArchive();
 
         if ($zip->open($filepath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== TRUE) {
-            throw new \moodle_exception('Impossible de créer le fichier XLSX');
+            throw new \moodle_exception(get_string('xlsxcreateerror', 'local_exammanager'));
         }
 
         $files = new \RecursiveIteratorIterator(
@@ -197,17 +197,17 @@ Target="worksheets/sheet1.xml"/>
         $zip->close();
 
         /*
-        IMPORTANT : vérifier que le fichier existe
+        IMPORTANT: check that the file was actually generated.
         */
         if (!file_exists($filepath)) {
-            throw new \moodle_exception('Fichier Excel non généré.');
+            throw new \moodle_exception(get_string('xlsxnotgenerated', 'local_exammanager'));
         }
 
         self::delete_dir($base);
     }
 
     /**
-     * Suppression récursive du dossier temporaire.
+     * Recursively deletes the temporary directory.
      */
     private static function delete_dir(string $dir): void {
         if (!is_dir($dir)) {

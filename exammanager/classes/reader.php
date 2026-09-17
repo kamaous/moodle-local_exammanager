@@ -42,13 +42,13 @@ class reader {
             $fh = fopen($filepath, 'r');
 
             if (!$fh) {
-                throw new \moodle_exception('Impossible de lire le fichier CSV');
+                throw new \moodle_exception(get_string('cannotreadcsv', 'local_exammanager'));
             }
 
             $header = fgetcsv($fh, 0, ';');
 
             if ($header === false || empty($header)) {
-                throw new \moodle_exception('CSV vide ou en-têtes invalides');
+                throw new \moodle_exception(get_string('csvemptyorinvalidheaders', 'local_exammanager'));
             }
 
             $header = array_map(function($value) {
@@ -58,7 +58,7 @@ class reader {
             }, $header);
 
             if (count($header) !== count(array_unique($header))) {
-                throw new \moodle_exception('CSV invalide : colonnes dupliquées');
+                throw new \moodle_exception(get_string('csvduplicatecolumns', 'local_exammanager'));
             }
 
             while (($data = fgetcsv($fh, 0, ';')) !== false) {
@@ -68,12 +68,12 @@ class reader {
                 }
 
                 if (count($data) !== count($header)) {
-                    throw new \moodle_exception('CSV invalide : nombre de colonnes incohérent');
+                    throw new \moodle_exception(get_string('csvinconsistentcolumns', 'local_exammanager'));
                 }
 
                 $combined = array_combine($header, $data);
                 if ($combined === false) {
-                    throw new \moodle_exception("CSV invalide : impossible d'associer les colonnes");
+                    throw new \moodle_exception(get_string('csvcannotmapcolumns', 'local_exammanager'));
                 }
 
                 $rows[] = array_map(function($value) {
@@ -90,17 +90,17 @@ class reader {
         ====================== */
         if ($ext === 'xlsx' || $ext === 'xls') {
 
-            // 🔥 Charger PhpSpreadsheet si dispo
+            // Load PhpSpreadsheet if available.
             if (file_exists($CFG->dirroot . '/lib/phpspreadsheet/vendor/autoload.php')) {
                 require_once($CFG->dirroot . '/lib/phpspreadsheet/vendor/autoload.php');
             } elseif (file_exists($CFG->dirroot . '/vendor/autoload.php')) {
                 require_once($CFG->dirroot . '/vendor/autoload.php');
             }
 
-            // Vérification
+            // Check availability.
             if (!class_exists('\PhpOffice\PhpSpreadsheet\IOFactory')) {
                 throw new \moodle_exception(
-                    'Lecture Excel impossible : PhpSpreadsheet non installé. Utilisez CSV ou installez la librairie.'
+                    get_string('phpspreadsheetmissing', 'local_exammanager')
                 );
             }
 
@@ -110,7 +110,7 @@ class reader {
                 $data = $sheet->toArray(null, true, true, false);
 
                 if (empty($data)) {
-                    throw new \moodle_exception('Fichier Excel vide');
+                    throw new \moodle_exception(get_string('excelfileempty', 'local_exammanager'));
                 }
 
                 $header = array_map(function($value) {
@@ -118,7 +118,7 @@ class reader {
                 }, $data[0]);
 
                 if (empty($header) || count($header) !== count(array_unique($header))) {
-                    throw new \moodle_exception('Fichier Excel invalide : en-têtes manquants ou dupliqués');
+                    throw new \moodle_exception(get_string('excelinvalidheaders', 'local_exammanager'));
                 }
 
                 for ($i = 1; $i < count($data); $i++) {
@@ -142,13 +142,13 @@ class reader {
 
             } catch (\Throwable $e) {
                 debugging('ExamManager Excel read error: ' . $e->getMessage(), DEBUG_DEVELOPER);
-                throw new moodle_exception('Erreur de lecture Excel. Vérifiez que le fichier est valide et conforme au modèle attendu.');
+                throw new moodle_exception(get_string('excelreaderror', 'local_exammanager'));
             }
         }
 
         /* ======================
-           AUTRE FORMAT
+           OTHER FORMAT
         ====================== */
-        throw new \moodle_exception('Format non supporté : ' . $ext);
+        throw new \moodle_exception(get_string('unsupportedformat', 'local_exammanager', $ext));
     }
 }

@@ -42,7 +42,7 @@ $sharedcodeskey = 'local_exammanager_sharedcodes_' . $userid;
 $lockkey = 'local_exammanager_locked_' . $userid;
 $action = optional_param('action', '', PARAM_ALPHA);
 
-// Option "Autoriser les codes partagés" : mémorisée en session, activée par défaut.
+// "Allow shared codes" option: remembered in session, enabled by default.
 if (!isset($SESSION->$sharedcodeskey)) {
     $SESSION->$sharedcodeskey = 1;
 }
@@ -97,10 +97,10 @@ echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
 echo \local_exammanager\output\navbar::render('programming');
 
-echo '<div class="local-exammanager-hero">';
-echo '<h2>Programmation des examens</h2>';
-echo '<div class="local-exammanager-muted">Upload + preview + programmation complète</div>';
-echo '</div>';
+echo $OUTPUT->render_from_template('local_exammanager/hero', [
+    'title' => get_string('index_hero_title', 'local_exammanager'),
+    'subtitle' => get_string('index_hero_subtitle', 'local_exammanager'),
+]);
 
 echo '<div class="local-exammanager-panel">';
 
@@ -109,7 +109,7 @@ UPLOAD FORM
 ======================== */
 echo '<br><br>';
 echo '<a href="' . new moodle_url('/local/exammanager/download_template.php', ['sesskey' => sesskey()]) . '" class="btn btn-secondary">';
-echo 'Télécharger modèle Excel';
+echo get_string('downloadexceltemplate', 'local_exammanager');
 echo '</a>';
 
 echo '<form method="post" enctype="multipart/form-data">';
@@ -117,7 +117,7 @@ echo '<input type="hidden" name="sesskey" value="' . sesskey() . '">';
 echo '<input type="hidden" name="action" value="preview">';
 
 echo '<div class="local-exammanager-dropzone">';
-echo '<div><strong>Glissez-déposez ou cliquez</strong></div>';
+echo '<div><strong>' . get_string('dropzonelabel', 'local_exammanager') . '</strong></div>';
 echo '<input type="file" name="planningfile" accept=".csv,.xlsx,.xls" required>';
 echo '</div>';
 
@@ -128,7 +128,7 @@ echo '<div class="local-exammanager-muted small">' . get_string('allowsharedcode
 echo '</div>';
 
 echo '<br>';
-echo '<button class="btn btn-primary">Prévisualiser le planning</button>';
+echo '<button class="btn btn-primary">' . get_string('previewplanning', 'local_exammanager') . '</button>';
 echo '</form>';
 
 
@@ -138,13 +138,13 @@ PREVIEW
 if ($action === 'preview' && confirm_sesskey()) {
 
     if (!isset($_FILES['planningfile']) || empty($_FILES['planningfile']['tmp_name'])) {
-        echo $OUTPUT->notification('Aucun fichier uploadé', 'notifyproblem');
+        echo $OUTPUT->notification(get_string('nofile', 'local_exammanager'), 'notifyproblem');
     } else {
 
         try {
 
             // =======================
-            // RESET ANCIENS EXPORTS
+            // RESET PREVIOUS EXPORTS
             // =======================
             $base = make_temp_directory('local_exammanager/' . $USER->id);
 
@@ -161,7 +161,7 @@ if ($action === 'preview' && confirm_sesskey()) {
             }
 
             // =======================
-            // PREPARATION FICHIER
+            // FILE PREPARATION
             // =======================
             $tmp = $_FILES['planningfile']['tmp_name'];
             $name = $_FILES['planningfile']['name'];
@@ -169,23 +169,23 @@ if ($action === 'preview' && confirm_sesskey()) {
             $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
             if (!$ext) {
-                throw new moodle_exception('Impossible de détecter le type du fichier');
+                throw new moodle_exception(get_string('cannotdetectfiletype', 'local_exammanager'));
             }
 
-            // Création fichier temporaire avec extension correcte
+            // Create a temporary file with the correct extension.
             $newfile = $tmp . '.' . $ext;
 
             if (!copy($tmp, $newfile)) {
-                throw new moodle_exception('Erreur lors de la copie du fichier');
+                throw new moodle_exception(get_string('filecopyerror', 'local_exammanager'));
             }
 
             // =======================
-            // LECTURE DU FICHIER
+            // FILE READING
             // =======================
             $rows = \local_exammanager\reader::read_rows($newfile);
 
             if (empty($rows)) {
-                throw new moodle_exception('Le fichier est vide ou mal formaté');
+                throw new moodle_exception(get_string('fileemptyorinvalid', 'local_exammanager'));
             }
 
             $used = [];
@@ -206,7 +206,7 @@ if ($action === 'preview' && confirm_sesskey()) {
                 }
 
                 $row['status'] = 'READY';
-                $row['message'] = 'Prévisualisation OK';
+                $row['message'] = get_string('previewok', 'local_exammanager');
                 $row['access_code_action'] = \local_exammanager\util::normalize_access_action($row);
                 $row['seb_action'] = \local_exammanager\util::normalize_seb_action($row);
             }
@@ -215,20 +215,20 @@ if ($action === 'preview' && confirm_sesskey()) {
             $rows = \local_exammanager\util::assign_shared_generated_codes($rows, false, $allowsharedcodes);
 
             // =======================
-            // STOCKAGE SESSION
+            // SESSION STORAGE
             // =======================
             $SESSION->$sessionkey = $rows;
-            $SESSION->$lockkey = 0; // Nouveau fichier chargé : nouvelle opération, déverrouillage.
+            $SESSION->$lockkey = 0; // New file uploaded: new operation, unlock.
 
             echo $OUTPUT->notification(
-                'Prévisualisation terminée. Vous pouvez programmer les examens.',
+                get_string('previewcompletedmsg', 'local_exammanager'),
                 'notifysuccess'
             );
 
         } catch (Throwable $e) {
 
             debugging('ExamManager preview error: ' . $e->getMessage(), DEBUG_DEVELOPER);
-            echo $OUTPUT->notification('Une erreur est survenue pendant la prévisualisation. Vérifiez le fichier importé et réessayez. Les détails techniques ont été journalisés côté serveur.', 'notifyproblem');
+            echo $OUTPUT->notification(get_string('previewerrormsg', 'local_exammanager'), 'notifyproblem');
         }
     }
 }
@@ -237,7 +237,7 @@ if ($action === 'preview' && confirm_sesskey()) {
 if ($action === 'refreshrows' && confirm_sesskey()) {
 
     if (!empty($SESSION->$lockkey)) {
-        echo $OUTPUT->notification('Programmation déjà terminée. Chargez un nouveau fichier pour démarrer une nouvelle opération.', 'notifywarning');
+        echo $OUTPUT->notification(get_string('alreadylockedmsg', 'local_exammanager'), 'notifywarning');
     } else if (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) {
         $rows = $SESSION->$sessionkey;
         $editedrows = $_POST['rowedit'] ?? [];
@@ -267,14 +267,14 @@ if ($action === 'refreshrows' && confirm_sesskey()) {
                 $row['message'] = $msg;
             } else if (($row['status'] ?? '') !== 'PROGRAMMÉ') {
                 $row['status'] = 'READY';
-                $row['message'] = 'Prévisualisation actualisée';
+                $row['message'] = get_string('previewrefreshedmsg', 'local_exammanager');
             }
         }
         unset($row);
 
         $rows = \local_exammanager\util::assign_shared_generated_codes($rows, true, $allowsharedcodes);
         $SESSION->$sessionkey = $rows;
-        echo $OUTPUT->notification('Prévisualisation mise à jour', 'notifysuccess');
+        echo $OUTPUT->notification(get_string('previewupdatedmsg', 'local_exammanager'), 'notifysuccess');
     }
 }
 
@@ -284,7 +284,7 @@ PROGRAM
 if ($action === 'program' && confirm_sesskey()) {
 
     if (!empty($SESSION->$lockkey)) {
-        echo $OUTPUT->notification('Programmation déjà terminée. Chargez un nouveau fichier pour démarrer une nouvelle opération.', 'notifywarning');
+        echo $OUTPUT->notification(get_string('alreadylockedmsg', 'local_exammanager'), 'notifywarning');
     } else if (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) {
 
         $rows = $SESSION->$sessionkey;
@@ -319,7 +319,7 @@ if ($action === 'program' && confirm_sesskey()) {
                 $row['seb_exit_code'] = '';
             } else if (($row['status'] ?? '') !== 'PROGRAMMÉ') {
                 $row['status'] = 'READY';
-                $row['message'] = 'Prêt pour programmation';
+                $row['message'] = get_string('readytoprogrammsg', 'local_exammanager');
             }
         }
         unset($row);
@@ -333,7 +333,7 @@ if ($action === 'program' && confirm_sesskey()) {
 
             $out = \local_exammanager\manager::program_row($row, $used);
             $row['status'] = $out['status'] ?? 'ERROR';
-            $row['message'] = $out['message'] ?? 'Erreur inconnue';
+            $row['message'] = $out['message'] ?? get_string('unknownerror', 'local_exammanager');
             $row['access_code'] = $out['access_code'] ?? ($row['access_code'] ?? '');
             $row['seb_exit_code'] = $out['seb_exit_code'] ?? ($row['seb_exit_code'] ?? '');
             if (!empty($out['quiz_name'])) {
@@ -345,7 +345,7 @@ if ($action === 'program' && confirm_sesskey()) {
         $SESSION->$sessionkey = $rows;
 
         /* =======================
-        EXPORTS
+        EXPORT FILES
         ======================= */
         $base = make_temp_directory('local_exammanager/' . $USER->id);
 
@@ -374,10 +374,10 @@ if ($action === 'program' && confirm_sesskey()) {
             'log' => new moodle_url('/local/exammanager/download.php', ['type' => 'log', 'sesskey' => sesskey()]),
         ];
 
-        // Verrouillage : plus d'édition ni de reprogrammation sans charger un nouveau fichier.
+        // Lock: no further editing or reprogramming without uploading a new file.
         $SESSION->$lockkey = 1;
 
-        echo $OUTPUT->notification('Programmation terminée', 'notifysuccess');
+        echo $OUTPUT->notification(get_string('processingdone', 'local_exammanager'), 'notifysuccess');
     }
 }
 
@@ -393,7 +393,7 @@ DISPLAY RESULTS
 ======================== */
 if (!empty($rows)) {
 
-    echo '<h3>Résultats</h3>';
+    echo '<h3>' . get_string('results', 'local_exammanager') . '</h3>';
 
     $islocked = !empty($SESSION->$lockkey);
 
@@ -408,22 +408,28 @@ if (!empty($rows)) {
     echo '<table class="generaltable local-exammanager-preview-table">';
     echo '<thead><tr>';
     $previewheadings = [
-        ['Course', 'col-course'],
-        ['Quiz détecté / corrigé', 'col-quizname'],
-        ['Quiz à programmer', 'col-quizselect'],
-        ['Open', 'col-open'],
-        ['Close', 'col-close'],
-        ['Durée (min)', 'col-duration'],
-        ['Action accès', 'col-accessaction'],
-        ['Action SEB', 'col-sebaction'],
-        ['Code accès', 'col-accesscode'],
-        ['Code sortie SEB', 'col-sebcode'],
-        ['Message', 'col-message'],
+        [get_string('course', 'local_exammanager'), 'col-course'],
+        [get_string('col_quizdetected', 'local_exammanager'), 'col-quizname'],
+        [get_string('col_quiztoprogram', 'local_exammanager'), 'col-quizselect'],
+        [get_string('open', 'local_exammanager'), 'col-open'],
+        [get_string('close', 'local_exammanager'), 'col-close'],
+        [get_string('col_durationminutes', 'local_exammanager'), 'col-duration'],
+        [get_string('col_accessaction', 'local_exammanager'), 'col-accessaction'],
+        [get_string('col_sebaction', 'local_exammanager'), 'col-sebaction'],
+        [get_string('accesscode', 'local_exammanager'), 'col-accesscode'],
+        [get_string('sebexitcode', 'local_exammanager'), 'col-sebcode'],
+        [get_string('message', 'local_exammanager'), 'col-message'],
     ];
     foreach ($previewheadings as [$heading, $class]) {
         echo html_writer::tag('th', s($heading), ['class' => $class]);
     }
     echo '</tr></thead><tbody>';
+
+    $actionlabels = [
+        'keep' => get_string('action_keep', 'local_exammanager'),
+        'generate' => get_string('action_generate', 'local_exammanager'),
+        'disable' => get_string('action_disable', 'local_exammanager'),
+    ];
 
     foreach ($rows as $idx => $r) {
         $coursevalue = trim((string)($r['course_shortname'] ?? ''));
@@ -435,10 +441,9 @@ if (!empty($rows)) {
         $prestatus = (string)($r['status'] ?? '');
         $premessage = (string)($r['message'] ?? '');
 
-        // Ligne verrouillée : opération terminée ou examen déjà programmé -> lecture seule.
+        // Locked row: operation finished, or this exam is already programmed -> read-only.
         $rowlocked = $islocked || in_array($prestatus, ['PROGRAMMÉ', 'PROGRAMMED'], true);
         if ($rowlocked) {
-            $actionlabels = ['keep' => 'Garder', 'generate' => 'Générer', 'disable' => 'Désactiver'];
             $lockedaccess = \local_exammanager\util::normalize_access_action($r);
             $lockedseb = \local_exammanager\util::normalize_seb_action($r);
             $opendisplay = str_replace('T', ' ', \local_exammanager\util::to_datetime_local_value($r['open_time'] ?? ''));
@@ -504,7 +509,7 @@ if (!empty($rows)) {
 
         $accessaction = (string)($r['access_code_action'] ?? \local_exammanager\util::normalize_access_action($r));
         $accessoptions = [];
-        foreach (['keep' => 'Garder', 'generate' => 'Générer', 'disable' => 'Désactiver'] as $value => $label) {
+        foreach ($actionlabels as $value => $label) {
             $attrs = ['value' => $value];
             if ($accessaction === $value) {
                 $attrs['selected'] = 'selected';
@@ -519,7 +524,7 @@ if (!empty($rows)) {
 
         $sebaction = (string)($r['seb_action'] ?? \local_exammanager\util::normalize_seb_action($r));
         $seboptions = [];
-        foreach (['keep' => 'Garder', 'generate' => 'Générer', 'disable' => 'Désactiver'] as $value => $label) {
+        foreach ($actionlabels as $value => $label) {
             $attrs = ['value' => $value];
             if ($sebaction === $value) {
                 $attrs['selected'] = 'selected';
@@ -553,7 +558,7 @@ if (!empty($rows)) {
                 );
                 if ($quizzes) {
                     $options = [];
-                    $options[] = html_writer::tag('option', 'Choisir le bon quiz', ['value' => '']);
+                    $options[] = html_writer::tag('option', get_string('choosecorrectquiz', 'local_exammanager'), ['value' => '']);
                     foreach ($quizzes as $quiz) {
                         $attrs = ['value' => (int)$quiz->id];
                         if ($selectedquizid > 0 && $selectedquizid === (int)$quiz->id) {
@@ -570,11 +575,11 @@ if (!empty($rows)) {
                     ]);
                 } else {
                     $quizrequired = '0';
-                    $quizselector = html_writer::span('Aucun quiz trouvé dans ce cours', 'text-muted');
+                    $quizselector = html_writer::span(get_string('noquizfoundincourse', 'local_exammanager'), 'text-muted');
                 }
             } else {
                 $coursevalidity = 'invalid';
-                $quizselector = html_writer::span('Shortname introuvable', 'text-danger');
+                $quizselector = html_writer::span(get_string('shortnamenotfound', 'local_exammanager'), 'text-danger');
             }
         }
 
@@ -598,7 +603,7 @@ if (!empty($rows)) {
 
 
     if ($islocked) {
-        echo $OUTPUT->notification('Programmation terminée. Ces résultats ne sont plus modifiables : chargez un nouveau fichier ci-dessus pour démarrer une nouvelle opération.', 'notifymessage');
+        echo $OUTPUT->notification(get_string('lockednoticemsg', 'local_exammanager'), 'notifymessage');
     } else {
         echo '<div class="form-check" style="margin-top:12px;">';
         echo '<input type="checkbox" class="form-check-input" id="allow-shared-codes-preview" name="allow_shared_codes" value="1"' . ($allowsharedcodes ? ' checked' : '') . '>';
@@ -607,106 +612,16 @@ if (!empty($rows)) {
         echo '</div>';
 
         echo '<div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">';
-        echo '<button class="btn btn-outline-secondary" type="submit" name="action" value="refreshrows">Actualiser la prévisualisation</button>';
-        echo '<button class="btn btn-success" type="submit" name="action" value="program" id="exammanager-program-btn" ' . ($isprogrammode ? '' : 'disabled') . '>Programmer les examens</button>';
+        echo '<button class="btn btn-outline-secondary" type="submit" name="action" value="refreshrows">' . get_string('refreshpreview', 'local_exammanager') . '</button>';
+        echo '<button class="btn btn-success" type="submit" name="action" value="program" id="exammanager-program-btn" ' . ($isprogrammode ? '' : 'disabled') . '>' . get_string('programexams', 'local_exammanager') . '</button>';
         echo '</div>';
+
+        $PAGE->requires->js_call_amd('local_exammanager/preview_validation', 'init');
     }
 
-    if (!$islocked) {
-    echo '<script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var form = document.getElementById("exammanager-preview-form");
-            var programBtn = document.getElementById("exammanager-program-btn");
-            if (!form || !programBtn) {
-                return;
-            }
-
-            function isValidDateTimeLocal(value) {
-                if (!value) {
-                    return false;
-                }
-                return !Number.isNaN(new Date(value).getTime());
-            }
-
-            function validateRow(row) {
-                var errors = [];
-                var courseValid = row.dataset.courseValid || "missing";
-                var quizRequired = row.dataset.quizRequired || "1";
-                var openInput = row.querySelector(".exammanager-open-input");
-                var closeInput = row.querySelector(".exammanager-close-input");
-                var durationInput = row.querySelector(".exammanager-duration-input");
-                var quizSelect = row.querySelector(".exammanager-quiz-select");
-                var statusText = row.querySelector(".exammanager-status-text");
-                var messageText = row.querySelector(".exammanager-message-text");
-                var inlineErrors = row.querySelector(".exammanager-inline-errors");
-
-                var openValue = openInput ? openInput.value.trim() : "";
-                var closeValue = closeInput ? closeInput.value.trim() : "";
-                var durationValue = durationInput ? durationInput.value.trim() : "";
-
-                if (courseValid === "invalid") {
-                    errors.push("Shortname introuvable.");
-                }
-
-                if (!openValue || !closeValue) {
-                    errors.push("Les champs de date et heure sont obligatoires.");
-                } else if (!isValidDateTimeLocal(openValue) || !isValidDateTimeLocal(closeValue)) {
-                    errors.push("Format de date vide ou invalide.");
-                } else if (new Date(closeValue).getTime() <= new Date(openValue).getTime()) {
-                    errors.push("La date de fermeture doit être postérieure à la date d\'ouverture.");
-                }
-
-                if (durationValue === "" || Number(durationValue) <= 0) {
-                    errors.push("La durée doit être supérieure à 0 minute.");
-                }
-
-                if (quizRequired === "1") {
-                    if (!quizSelect || !quizSelect.value) {
-                        errors.push("Quiz non sélectionné.");
-                    }
-                }
-
-                row.classList.toggle("table-danger", errors.length > 0);
-                if (inlineErrors) {
-                    inlineErrors.innerHTML = errors.map(function(error) {
-                        return "<div>" + error + "</div>";
-                    }).join("");
-                }
-
-                if (statusText && messageText && errors.length > 0) {
-                    statusText.textContent = "ERROR";
-                    messageText.textContent = "Correction requise avant programmation";
-                }
-
-                return errors;
-            }
-
-            function validateAllRows() {
-                var rows = form.querySelectorAll(".exammanager-preview-row");
-                var totalErrors = 0;
-                rows.forEach(function(row) {
-                    totalErrors += validateRow(row).length;
-                });
-                programBtn.disabled = totalErrors > 0;
-            }
-
-            form.addEventListener("input", function(e) {
-                if (e.target.closest(".exammanager-preview-row")) {
-                    validateAllRows();
-                }
-            });
-            form.addEventListener("change", function(e) {
-                if (e.target.closest(".exammanager-preview-row")) {
-                    validateAllRows();
-                }
-            });
-            validateAllRows();
-        });
-        </script>';
-    }
     echo '</form>';
 
-    /* Afficher aussi les liens si les fichiers existent déjà */
+    /* Also show the download links if the files already exist. */
     if (empty($downloads) && $action !== 'preview') {
         $base = make_temp_directory('local_exammanager/' . $USER->id);
 
@@ -720,10 +635,10 @@ if (!empty($rows)) {
     }
 
     if (!empty($downloads)) {
-        echo '<br><h3>Téléchargements</h3>';
-        echo html_writer::link($downloads['csv'], 'Télécharger CSV') . '<br>';
-        echo html_writer::link($downloads['excel'], 'Télécharger Excel') . '<br>';
-        echo html_writer::link($downloads['log'], 'Télécharger Log') . '<br>';
+        echo '<br><h3>' . get_string('downloadssection', 'local_exammanager') . '</h3>';
+        echo html_writer::link($downloads['csv'], get_string('downloadcsv', 'local_exammanager')) . '<br>';
+        echo html_writer::link($downloads['excel'], get_string('downloadexcel', 'local_exammanager')) . '<br>';
+        echo html_writer::link($downloads['log'], get_string('downloadlog', 'local_exammanager')) . '<br>';
     }
 }
 

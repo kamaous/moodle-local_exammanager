@@ -28,8 +28,8 @@ defined('MOODLE_INTERNAL') || die();
 class hook_callbacks {
 
     /**
-     * Ajoute un accès rapide au plugin dans la barre de navigation principale,
-     * uniquement pour les utilisateurs autorisés (gestionnaires et administrateurs).
+     * Adds a quick access link to the plugin in the primary navigation bar,
+     * only for authorised users (managers and administrators).
      */
     public static function primary_extend(\core\hook\navigation\primary_extend $hook): void {
         if (!isloggedin() || isguestuser()) {

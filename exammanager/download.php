@@ -58,13 +58,13 @@ $files = [
 ];
 
 if (!isset($files[$type])) {
-    throw new moodle_exception('Type de téléchargement invalide');
+    throw new moodle_exception(get_string('invaliddownloadtype', 'local_exammanager'));
 }
 
 $info = $files[$type];
 
 if (!file_exists($info['file'])) {
-    throw new moodle_exception('Fichier introuvable');
+    throw new moodle_exception(get_string('filenotfound', 'local_exammanager'));
 }
 
 $realbase = realpath($base);

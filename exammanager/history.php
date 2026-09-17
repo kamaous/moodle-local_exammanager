@@ -197,12 +197,12 @@ $records = ($export === 'csv')
 
 $buildrow = function($record) use ($now) {
     $quizname = trim((string)($record->quiznamecurrent ?? '')) !== '' ? (string)$record->quiznamecurrent : (string)$record->quizname;
-    $quizlink = s($quizname !== '' ? $quizname : ('Quiz #' . (int)$record->quizid));
+    $quizlink = s($quizname !== '' ? $quizname : get_string('quiznumber', 'local_exammanager', (int)$record->quizid));
     if (!empty($record->cmid)) {
-        $quizlink = html_writer::link(new moodle_url('/course/modedit.php', ['update' => (int)$record->cmid, 'return' => 0]), s($quizname), ['target' => '_blank', 'rel' => 'noopener']); 
+        $quizlink = html_writer::link(new moodle_url('/course/modedit.php', ['update' => (int)$record->cmid, 'return' => 0]), s($quizname), ['target' => '_blank', 'rel' => 'noopener']);
     }
 
-    $coursename = trim((string)($record->coursefullname ?? '')) !== '' ? format_string($record->coursefullname) : ('Cours #' . (int)$record->courseid);
+    $coursename = trim((string)($record->coursefullname ?? '')) !== '' ? format_string($record->coursefullname) : get_string('coursenumber', 'local_exammanager', (int)$record->courseid);
     $courselink = '-';
     if (!empty($record->actualcourseid)) {
         $courselink = html_writer::link(new moodle_url('/course/view.php', ['id' => (int)$record->actualcourseid]), $coursename, ['target' => '_blank', 'rel' => 'noopener']);
@@ -254,6 +254,17 @@ foreach ($records as $record) {
     $rows[] = $buildrow($record);
 }
 
+$historytableheaders = [
+    get_string('course', 'local_exammanager'),
+    get_string('shortnamelabel', 'local_exammanager'),
+    get_string('historycol_quiztest', 'local_exammanager'),
+    get_string('section'),
+    get_string('open', 'local_exammanager'),
+    get_string('close', 'local_exammanager'),
+    get_string('duration', 'local_exammanager'),
+    get_string('lastprogrammed', 'local_exammanager'),
+];
+
 if ($export === 'csv') {
     require_sesskey();
     $filename = 'exammanager_history_v7_4_secure_' . date('Ymd_His') . '.csv';
@@ -261,7 +272,7 @@ if ($export === 'csv') {
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     $out = fopen('php://output', 'w');
     fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
-    fputcsv($out, ['Cours', 'Shortname', 'Quiz/Test', 'Section', 'Ouverture', 'Fermeture', 'Duree', 'Derniere programmation'], ';');
+    fputcsv($out, $historytableheaders, ';');
     foreach ($rows as $row) {
         fputcsv($out, [
             trim(strip_tags($row['courselink'])),
@@ -282,7 +293,10 @@ echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
 echo \local_exammanager\output\navbar::render('history');
 
-echo '<div class="local-exammanager-hero"><h2>' . get_string('history', 'local_exammanager') . '</h2><div class="local-exammanager-muted">Vue d’historique filtrée côté SQL avec pagination, sans exposition des codes de sécurité.</div></div>';
+echo $OUTPUT->render_from_template('local_exammanager/hero', [
+    'title' => get_string('history', 'local_exammanager'),
+    'subtitle' => get_string('history_hero_subtitle', 'local_exammanager'),
+]);
 
 echo '<div class="local-exammanager-grid">';
 echo '<div class="local-exammanager-card"><h3>' . get_string('totlexams', 'local_exammanager') . '</h3><div class="metric">' . (int)$stats['total'] . '</div></div>';
@@ -309,18 +323,18 @@ $reseturl = new moodle_url('/local/exammanager/history.php');
 $pageurl = new moodle_url('/local/exammanager/history.php', $baseparams);
 
 echo '<div class="local-exammanager-panel">';
-echo '<h3 class="local-exammanager-sectiontitle">Filtres et recherche</h3>';
+echo '<h3 class="local-exammanager-sectiontitle">' . get_string('historyfilters_title', 'local_exammanager') . '</h3>';
 echo '<form method="get" action="' . new moodle_url('/local/exammanager/history.php') . '">';
 echo '<div class="local-exammanager-formrow">';
-echo '<div><label for="id_q">Recherche</label><input class="form-control" type="text" id="id_q" name="q" value="' . s($q) . '" placeholder="Cours, quiz, salle, surveillant, session"></div>';
-echo '<div><label for="id_courseid">Cours</label><select class="custom-select" id="id_courseid" name="courseid">';
+echo '<div><label for="id_q">' . get_string('historyfilters_search', 'local_exammanager') . '</label><input class="form-control" type="text" id="id_q" name="q" value="' . s($q) . '" placeholder="' . s(get_string('historyfilters_searchplaceholder', 'local_exammanager')) . '"></div>';
+echo '<div><label for="id_courseid">' . get_string('course', 'local_exammanager') . '</label><select class="custom-select" id="id_courseid" name="courseid">';
 foreach ($courseoptions as $value => $label) {
     $selected = ((int)$value === (int)$courseidfilter) ? ' selected' : '';
     echo '<option value="' . (int)$value . '"' . $selected . '>' . s($label) . '</option>';
 }
 echo '</select></div>';
-echo '<div><label for="id_shortname">Shortname</label><input class="form-control" type="text" id="id_shortname" name="shortname" value="' . s($shortnamefilter) . '"></div>';
-echo '<div><label for="id_status">Statut</label><select class="custom-select" id="id_status" name="status">';
+echo '<div><label for="id_shortname">' . get_string('shortnamelabel', 'local_exammanager') . '</label><input class="form-control" type="text" id="id_shortname" name="shortname" value="' . s($shortnamefilter) . '"></div>';
+echo '<div><label for="id_status">' . get_string('status', 'local_exammanager') . '</label><select class="custom-select" id="id_status" name="status">';
 $statusoptions = [
     '' => get_string('all'),
     'scheduled' => get_string('historystatusscheduled', 'local_exammanager'),
@@ -334,27 +348,27 @@ foreach ($statusoptions as $value => $label) {
     echo '<option value="' . s($value) . '"' . $selected . '>' . s($label) . '</option>';
 }
 echo '</select></div>';
-echo '<div><label for="id_teacher">Surveillant</label><select class="custom-select" id="id_teacher" name="teacher"><option value="">' . get_string('all') . '</option>';
+echo '<div><label for="id_teacher">' . get_string('teacher', 'local_exammanager') . '</label><select class="custom-select" id="id_teacher" name="teacher"><option value="">' . get_string('all') . '</option>';
 foreach ($teachers as $value) {
     $selected = ($value === $teacherfilter) ? ' selected' : '';
     echo '<option value="' . s($value) . '"' . $selected . '>' . s($value) . '</option>';
 }
 echo '</select></div>';
-echo '<div><label for="id_room">Salle</label><select class="custom-select" id="id_room" name="room"><option value="">' . get_string('all') . '</option>';
+echo '<div><label for="id_room">' . get_string('room', 'local_exammanager') . '</label><select class="custom-select" id="id_room" name="room"><option value="">' . get_string('all') . '</option>';
 foreach ($rooms as $value) {
     $selected = ($value === $roomfilter) ? ' selected' : '';
     echo '<option value="' . s($value) . '"' . $selected . '>' . s($value) . '</option>';
 }
 echo '</select></div>';
-echo '<div><label for="id_session">Session</label><select class="custom-select" id="id_session" name="session"><option value="">' . get_string('all') . '</option>';
+echo '<div><label for="id_session">' . get_string('historyfilters_session', 'local_exammanager') . '</label><select class="custom-select" id="id_session" name="session"><option value="">' . get_string('all') . '</option>';
 foreach ($sessions as $value) {
     $selected = ($value === $sessionfilter) ? ' selected' : '';
     echo '<option value="' . s($value) . '"' . $selected . '>' . s($value) . '</option>';
 }
 echo '</select></div>';
-echo '<div><label for="id_datefrom">Date début</label><input class="form-control" type="date" id="id_datefrom" name="datefrom" value="' . s($datefrom) . '"></div>';
-echo '<div><label for="id_dateto">Date fin</label><input class="form-control" type="date" id="id_dateto" name="dateto" value="' . s($dateto) . '"></div>';
-echo '<div><label for="id_perpage">Lignes/page</label><select class="custom-select" id="id_perpage" name="perpage">';
+echo '<div><label for="id_datefrom">' . get_string('historyfilters_datefrom', 'local_exammanager') . '</label><input class="form-control" type="date" id="id_datefrom" name="datefrom" value="' . s($datefrom) . '"></div>';
+echo '<div><label for="id_dateto">' . get_string('historyfilters_dateto', 'local_exammanager') . '</label><input class="form-control" type="date" id="id_dateto" name="dateto" value="' . s($dateto) . '"></div>';
+echo '<div><label for="id_perpage">' . get_string('historyfilters_perpage', 'local_exammanager') . '</label><select class="custom-select" id="id_perpage" name="perpage">';
 foreach ([10, 25, 50, 100] as $option) {
     $selected = ((int)$option === (int)$perpage) ? ' selected' : '';
     echo '<option value="' . (int)$option . '"' . $selected . '>' . (int)$option . '</option>';
@@ -362,23 +376,23 @@ foreach ([10, 25, 50, 100] as $option) {
 echo '</select></div>';
 echo '</div>';
 echo '<div class="local-exammanager-actions">';
-echo '<input type="submit" value="Filtrer">';
-echo html_writer::link($reseturl, 'Réinitialiser');
-echo html_writer::link($exporturl, 'Exporter CSV');
+echo '<input type="submit" value="' . s(get_string('historyfilters_filter', 'local_exammanager')) . '">';
+echo html_writer::link($reseturl, get_string('historyfilters_reset', 'local_exammanager'));
+echo html_writer::link($exporturl, get_string('historyfilters_exportcsv', 'local_exammanager'));
 echo '</div>';
 echo '</form>';
 echo '</div>';
 
 echo '<div class="local-exammanager-panel">';
-echo '<h3 class="local-exammanager-sectiontitle">Historique des programmations</h3>';
-echo html_writer::div('Les codes d’accès et codes de sortie Safe Exam Browser ne sont pas affichés dans cette vue.', 'local-exammanager-muted');
+echo '<h3 class="local-exammanager-sectiontitle">' . get_string('historytable_title', 'local_exammanager') . '</h3>';
+echo html_writer::div(get_string('historytable_codesnotshown', 'local_exammanager'), 'local-exammanager-muted');
 
 echo $OUTPUT->paging_bar($totalrows, $page, $perpage, $pageurl);
 
 if ($rows) {
     $table = new html_table();
     $table->attributes['class'] = 'generaltable local-exammanager-history-table';
-    $table->head = ['Cours', 'Shortname', 'Quiz/Test', 'Section', 'Ouverture', 'Fermeture', 'Durée', 'Dernière programmation'];
+    $table->head = $historytableheaders;
     foreach ($rows as $row) {
         $table->data[] = [$row['courselink'], $row['courseshortname'] !== '' ? $row['courseshortname'] : '-', $row['quizlink'], $row['sectionname'], $row['timeopen_display'], $row['timeclose_display'], $row['timelimit_display'], $row['lastprogrammed']];
     }
@@ -386,7 +400,7 @@ if ($rows) {
     echo html_writer::table($table);
     echo '</div>';
 } else {
-    echo html_writer::div('Aucun enregistrement ne correspond aux filtres actuels.', 'local-exammanager-muted');
+    echo html_writer::div(get_string('historytable_norecords', 'local_exammanager'), 'local-exammanager-muted');
 }
 
 echo $OUTPUT->paging_bar($totalrows, $page, $perpage, $pageurl);

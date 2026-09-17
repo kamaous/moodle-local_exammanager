@@ -51,7 +51,7 @@ if ($action === 'apply' && confirm_sesskey()) {
     $course = \local_exammanager\activity_planner::get_course_by_shortname($shortname);
 
     if (!$course) {
-        $applymessage = 'Shortname du cours introuvable.';
+        $applymessage = get_string('shortnamenotfound', 'local_exammanager');
         $applymessagetype = 'notifyproblem';
     } else {
         $targettype = optional_param('targettype', 'sections', PARAM_ALPHA);
@@ -66,10 +66,10 @@ if ($action === 'apply' && confirm_sesskey()) {
         $removerestriction = $restriction && (string)($restriction->type ?? '') === 'remove';
 
         if ($targettype === 'sections' && empty($sectionids)) {
-            $applymessage = 'Sélectionnez au moins une section ou une tuile.';
+            $applymessage = get_string('selectatleastonesection', 'local_exammanager');
             $applymessagetype = 'notifyproblem';
         } else if ($targettype === 'activities' && empty($cmids)) {
-            $applymessage = 'Sélectionnez au moins une activité.';
+            $applymessage = get_string('selectatleastoneactivity', 'local_exammanager');
             $applymessagetype = 'notifyproblem';
         } else if ($error !== '') {
             $applymessage = $error;
@@ -79,22 +79,22 @@ if ($action === 'apply' && confirm_sesskey()) {
                 if ($targettype === 'sections') {
                     $result = \local_exammanager\activity_planner::apply_section_restriction($course, $sectionids, $restriction, $showrestriction);
                     $applymessage = $removerestriction
-                        ? (int)$result['updated'] . ' section(s) / tuile(s) nettoyée(s).'
-                        : (int)$result['updated'] . ' section(s) / tuile(s) mise(s) à jour.';
+                        ? get_string('sectionscleaned', 'local_exammanager', (int)$result['updated'])
+                        : get_string('sectionsupdated', 'local_exammanager', (int)$result['updated']);
                 } else {
                     $result = \local_exammanager\activity_planner::apply_restriction($course, $cmids, $restriction, $showrestriction);
                     $applymessage = $removerestriction
-                        ? (int)$result['updated'] . ' activité(s) nettoyée(s).'
-                        : (int)$result['updated'] . ' activité(s) mise(s) à jour.';
+                        ? get_string('activitiescleaned', 'local_exammanager', (int)$result['updated'])
+                        : get_string('activitiesupdated', 'local_exammanager', (int)$result['updated']);
                 }
 
                 if ((int)$result['updated'] === 0) {
                     $applymessagetype = 'notifyproblem';
-                    $applymessage = 'Aucun élément du cours n’a été mis à jour.';
+                    $applymessage = get_string('nocourseitemupdated', 'local_exammanager');
                 }
             } catch (Throwable $e) {
                 debugging('ExamManager activity planning error: ' . $e->getMessage(), DEBUG_DEVELOPER);
-                $applymessage = 'Erreur pendant l’application des restrictions. Les détails techniques ont été journalisés côté serveur.';
+                $applymessage = get_string('restrictionapplyerror', 'local_exammanager');
                 $applymessagetype = 'notifyproblem';
             }
         }
@@ -107,7 +107,7 @@ if (!$course && $shortname !== '') {
 
 if ($action === 'bulkpreview' && confirm_sesskey()) {
     if (!isset($_FILES['activityfile']) || empty($_FILES['activityfile']['tmp_name'])) {
-        $applymessage = 'Aucun fichier uploadé.';
+        $applymessage = get_string('nofile', 'local_exammanager');
         $applymessagetype = 'notifyproblem';
     } else {
         try {
@@ -116,28 +116,28 @@ if ($action === 'bulkpreview' && confirm_sesskey()) {
             $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
             if (!$ext) {
-                throw new moodle_exception('Impossible de détecter le type du fichier.');
+                throw new moodle_exception(get_string('cannotdetectfiletype', 'local_exammanager'));
             }
 
             $newfile = $tmp . '.' . $ext;
             if (!copy($tmp, $newfile)) {
-                throw new moodle_exception('Erreur lors de la copie du fichier.');
+                throw new moodle_exception(get_string('filecopyerror', 'local_exammanager'));
             }
 
             $importrows = \local_exammanager\reader::read_rows($newfile);
             $bulkrows = \local_exammanager\activity_planner::preview_import_rows($importrows, $shortname);
             $SESSION->$sessionkey = $bulkrows;
-            $applymessage = 'Prévisualisation du fichier terminée.';
+            $applymessage = get_string('bulkpreviewcompletedmsg', 'local_exammanager');
             $applymessagetype = 'notifysuccess';
         } catch (Throwable $e) {
             debugging('ExamManager activity import preview error: ' . $e->getMessage(), DEBUG_DEVELOPER);
-            $applymessage = 'Erreur pendant la prévisualisation du fichier. Vérifiez le modèle importé.';
+            $applymessage = get_string('bulkpreviewerrormsg', 'local_exammanager');
             $applymessagetype = 'notifyproblem';
         }
     }
 } else if ($action === 'bulkrefresh' && confirm_sesskey()) {
     if (empty($SESSION->$sessionkey) || !is_array($SESSION->$sessionkey)) {
-        $applymessage = 'Aucune prévisualisation à actualiser.';
+        $applymessage = get_string('nopreviewtorefresh', 'local_exammanager');
         $applymessagetype = 'notifyproblem';
     } else {
         $postedrows = $_POST['rowedit'] ?? [];
@@ -147,12 +147,12 @@ if ($action === 'bulkpreview' && confirm_sesskey()) {
 
         $bulkrows = \local_exammanager\activity_planner::rebuild_import_preview($SESSION->$sessionkey, $postedrows, $shortname);
         $SESSION->$sessionkey = $bulkrows;
-        $applymessage = 'Prévisualisation du fichier actualisée.';
+        $applymessage = get_string('bulkpreviewrefreshedmsg', 'local_exammanager');
         $applymessagetype = 'notifysuccess';
     }
 } else if ($action === 'bulkapply' && confirm_sesskey()) {
     if (empty($SESSION->$sessionkey) || !is_array($SESSION->$sessionkey)) {
-        $applymessage = 'Aucune prévisualisation à appliquer.';
+        $applymessage = get_string('nopreviewtoapply', 'local_exammanager');
         $applymessagetype = 'notifyproblem';
     } else {
         $postedrows = $_POST['rowedit'] ?? [];
@@ -178,7 +178,7 @@ if ($action === 'bulkpreview' && confirm_sesskey()) {
         unset($bulkrow);
 
         $SESSION->$sessionkey = $bulkrows;
-        $applymessage = $applied . ' opération(s) appliquée(s).';
+        $applymessage = get_string('operationsappliedmsg', 'local_exammanager', $applied);
         $applymessagetype = $applied > 0 ? 'notifysuccess' : 'notifyproblem';
     }
 } else if (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) {
@@ -240,7 +240,7 @@ $renderbulkmanualselect = function(int $idx, string $field, array $source, array
     }
 
     if ($selected !== '' && !$hasselected) {
-        $optionhtml = html_writer::tag('option', s('Valeur importée : ' . $selected), [
+        $optionhtml = html_writer::tag('option', s(get_string('importedvalue', 'local_exammanager', $selected)), [
             'value' => $selected,
             'selected' => 'selected',
             'data-imported' => '1',
@@ -319,7 +319,7 @@ $resolvebulksectionvalue = function(array $source, array $sections) use ($normal
 
 $renderbulksectionselect = function(int $idx, array $source) use ($getbulktargets, $renderbulkmanualselect, $resolvebulksectionvalue): string {
     $targets = $getbulktargets((string)($source['course_shortname'] ?? ''));
-    $options = array_merge([['value' => '', 'label' => 'Choisir une section / tuile']], $targets['sections']);
+    $options = array_merge([['value' => '', 'label' => get_string('activitytargets_choosesection', 'local_exammanager')]], $targets['sections']);
     return $renderbulkmanualselect($idx, 'section', $source, $options, [
         'class' => 'form-select custom-select exammanager-bulk-section',
         'data-current' => (string)($source['section'] ?? ''),
@@ -328,7 +328,7 @@ $renderbulksectionselect = function(int $idx, array $source) use ($getbulktarget
 
 $renderbulkactivityselect = function(int $idx, array $source) use ($getbulktargets, $renderbulkmanualselect): string {
     $targets = $getbulktargets((string)($source['course_shortname'] ?? ''));
-    $options = [['value' => '', 'label' => 'Choisir une activité']];
+    $options = [['value' => '', 'label' => get_string('activitytargets_chooseactivity', 'local_exammanager')]];
     foreach ($targets['activities'] as $activity) {
         $options[] = $activity;
     }
@@ -368,71 +368,86 @@ $renderbulkrestriction = function(int $idx, array $source) use ($renderbulkinput
     $html = html_writer::start_div('local-exammanager-bulk-restriction', ['data-bulk-restriction-row' => '1']);
 
     $html .= html_writer::start_div('local-exammanager-bulk-main');
-    $html .= $renderbulklabel('Restriction', $renderbulkselect($idx, 'restriction_type', $source, [
-        'date' => 'Date',
-        'grade' => 'Note',
-        'profile' => 'Profil utilisateur',
-        'set' => 'Jeu de restrictions',
-        'remove' => 'Enlever les restrictions',
+    $html .= $renderbulklabel(get_string('restrictionlabel', 'local_exammanager'), $renderbulkselect($idx, 'restriction_type', $source, [
+        'date' => get_string('restrictionkind_date', 'local_exammanager'),
+        'grade' => get_string('restrictionkind_grade', 'local_exammanager'),
+        'profile' => get_string('restrictionkind_profile', 'local_exammanager'),
+        'set' => get_string('restrictionkind_set', 'local_exammanager'),
+        'remove' => get_string('restrictionkind_remove', 'local_exammanager'),
     ], ['class' => 'form-select custom-select exammanager-bulk-restriction-kind']));
     $showattrs = ['data-bulk-show' => '1'];
     if ($restrictiontype === 'remove') {
         $showattrs['style'] = 'display:none;';
     }
     $html .= html_writer::start_div('', $showattrs);
-    $html .= $renderbulklabel('Affichage', $renderbulkselect($idx, 'show', $source, ['1' => 'Oui', '0' => 'Non']));
+    $html .= $renderbulklabel(get_string('displaylabel', 'local_exammanager'), $renderbulkselect($idx, 'show', $source, [
+        '1' => get_string('yeslabel', 'local_exammanager'),
+        '0' => get_string('nolabel', 'local_exammanager'),
+    ]));
     $html .= html_writer::end_div();
     $html .= html_writer::end_div();
 
     $html .= html_writer::start_div('local-exammanager-bulk-group', $groupattrs('date'));
-    $html .= html_writer::tag('div', 'Date', ['class' => 'local-exammanager-bulk-group-title']);
+    $html .= html_writer::tag('div', get_string('restrictionkind_date', 'local_exammanager'), ['class' => 'local-exammanager-bulk-group-title']);
     $html .= html_writer::start_div('local-exammanager-bulk-pair');
-    $html .= $renderbulklabel('Sens', $renderbulkselect($idx, 'date_direction', $source, [
-        'from' => 'À partir',
-        'until' => 'Jusqu’à',
+    $html .= $renderbulklabel(get_string('directionlabel', 'local_exammanager'), $renderbulkselect($idx, 'date_direction', $source, [
+        'from' => get_string('direction_from', 'local_exammanager'),
+        'until' => get_string('direction_until', 'local_exammanager'),
     ]));
-    $html .= $renderbulklabel('Date et heure', $renderbulkinput($idx, 'date_time', $source, ['type' => 'datetime-local']));
+    $html .= $renderbulklabel(get_string('datetimelabel', 'local_exammanager'), $renderbulkinput($idx, 'date_time', $source, ['type' => 'datetime-local']));
     $html .= html_writer::end_div();
     $html .= html_writer::end_div();
 
     $html .= html_writer::start_div('local-exammanager-bulk-group', $groupattrs('grade'));
-    $html .= html_writer::tag('div', 'Note', ['class' => 'local-exammanager-bulk-group-title']);
-    $html .= $renderbulklabel('Note de référence', $renderbulkinput($idx, 'grade_item', $source, ['placeholder' => 'Nom ou id de la note']));
+    $html .= html_writer::tag('div', get_string('restrictionkind_grade', 'local_exammanager'), ['class' => 'local-exammanager-bulk-group-title']);
+    $html .= $renderbulklabel(get_string('gradereflabel', 'local_exammanager'), $renderbulkinput($idx, 'grade_item', $source, ['placeholder' => get_string('gradeitemplaceholder', 'local_exammanager')]));
     $html .= html_writer::start_div('local-exammanager-bulk-pair');
-    $html .= $renderbulklabel('Minimum', $renderbulkinput($idx, 'grade_min', $source, ['placeholder' => 'Min %']));
-    $html .= $renderbulklabel('Maximum', $renderbulkinput($idx, 'grade_max', $source, ['placeholder' => 'Max %']));
+    $html .= $renderbulklabel(get_string('minimumlabel', 'local_exammanager'), $renderbulkinput($idx, 'grade_min', $source, ['placeholder' => get_string('minpercentplaceholder', 'local_exammanager')]));
+    $html .= $renderbulklabel(get_string('maximumlabel', 'local_exammanager'), $renderbulkinput($idx, 'grade_max', $source, ['placeholder' => get_string('maxpercentplaceholder', 'local_exammanager')]));
     $html .= html_writer::end_div();
     $html .= html_writer::end_div();
 
     $html .= html_writer::start_div('local-exammanager-bulk-group', $groupattrs('profile'));
-    $html .= html_writer::tag('div', 'Profil utilisateur', ['class' => 'local-exammanager-bulk-group-title']);
-    $html .= $renderbulklabel('Champ', $renderbulkinput($idx, 'profile_field', $source, ['placeholder' => 'Ex. sf_department']));
+    $html .= html_writer::tag('div', get_string('restrictionkind_profile', 'local_exammanager'), ['class' => 'local-exammanager-bulk-group-title']);
+    $html .= $renderbulklabel(get_string('fieldlabel', 'local_exammanager'), $renderbulkinput($idx, 'profile_field', $source, ['placeholder' => get_string('profilefieldplaceholder', 'local_exammanager')]));
     $html .= html_writer::start_div('local-exammanager-bulk-pair');
-    $html .= $renderbulklabel('Condition', $renderbulkselect($idx, 'profile_operator', $source, [
-        'isequalto' => 'est égal à',
-        'contains' => 'contient',
-        'doesnotcontain' => 'ne contient pas',
-        'startswith' => 'commence par',
-        'endswith' => 'se termine par',
-        'isempty' => 'est vide',
-        'isnotempty' => 'n’est pas vide',
+    $html .= $renderbulklabel(get_string('conditionlabel', 'local_exammanager'), $renderbulkselect($idx, 'profile_operator', $source, [
+        'isequalto' => get_string('profileop_isequalto', 'local_exammanager'),
+        'contains' => get_string('profileop_contains', 'local_exammanager'),
+        'doesnotcontain' => get_string('profileop_doesnotcontain', 'local_exammanager'),
+        'startswith' => get_string('profileop_startswith', 'local_exammanager'),
+        'endswith' => get_string('profileop_endswith', 'local_exammanager'),
+        'isempty' => get_string('profileop_isempty', 'local_exammanager'),
+        'isnotempty' => get_string('profileop_isnotempty', 'local_exammanager'),
     ]));
-    $html .= $renderbulklabel('Valeur', $renderbulkinput($idx, 'profile_value', $source, ['placeholder' => 'Valeur']));
+    $html .= $renderbulklabel(get_string('valuelabel', 'local_exammanager'), $renderbulkinput($idx, 'profile_value', $source, ['placeholder' => get_string('valuelabel', 'local_exammanager')]));
     $html .= html_writer::end_div();
     $html .= html_writer::end_div();
 
     $html .= html_writer::start_div('local-exammanager-bulk-group', $groupattrs('set'));
-    $html .= html_writer::tag('div', 'Jeu de restrictions', ['class' => 'local-exammanager-bulk-group-title']);
+    $html .= html_writer::tag('div', get_string('restrictionkind_set', 'local_exammanager'), ['class' => 'local-exammanager-bulk-group-title']);
     $html .= html_writer::start_div('local-exammanager-bulk-pair');
-    $html .= $renderbulklabel('Logique', $renderbulkselect($idx, 'set_operator', $source, ['&' => 'ET', '|' => 'OU']));
-    $html .= $renderbulklabel('Date', $renderbulkselect($idx, 'set_date', $source, ['' => 'Non', '1' => 'Oui'], ['class' => 'form-select custom-select exammanager-bulk-set-toggle', 'data-bulk-set-toggle' => 'date']));
-    $html .= $renderbulklabel('Note', $renderbulkselect($idx, 'set_grade', $source, ['' => 'Non', '1' => 'Oui'], ['class' => 'form-select custom-select exammanager-bulk-set-toggle', 'data-bulk-set-toggle' => 'grade']));
-    $html .= $renderbulklabel('Profil', $renderbulkselect($idx, 'set_profile', $source, ['' => 'Non', '1' => 'Oui'], ['class' => 'form-select custom-select exammanager-bulk-set-toggle', 'data-bulk-set-toggle' => 'profile']));
+    $html .= $renderbulklabel(get_string('logiclabel', 'local_exammanager'), $renderbulkselect($idx, 'set_operator', $source, [
+        '&' => get_string('andlabel', 'local_exammanager'),
+        '|' => get_string('orlabel', 'local_exammanager'),
+    ]));
+    $html .= $renderbulklabel(get_string('restrictionkind_date', 'local_exammanager'), $renderbulkselect($idx, 'set_date', $source, [
+        '' => get_string('nolabel', 'local_exammanager'),
+        '1' => get_string('yeslabel', 'local_exammanager'),
+    ], ['class' => 'form-select custom-select exammanager-bulk-set-toggle', 'data-bulk-set-toggle' => 'date']));
+    $html .= $renderbulklabel(get_string('restrictionkind_grade', 'local_exammanager'), $renderbulkselect($idx, 'set_grade', $source, [
+        '' => get_string('nolabel', 'local_exammanager'),
+        '1' => get_string('yeslabel', 'local_exammanager'),
+    ], ['class' => 'form-select custom-select exammanager-bulk-set-toggle', 'data-bulk-set-toggle' => 'grade']));
+    $html .= $renderbulklabel(get_string('restrictionkind_profile', 'local_exammanager'), $renderbulkselect($idx, 'set_profile', $source, [
+        '' => get_string('nolabel', 'local_exammanager'),
+        '1' => get_string('yeslabel', 'local_exammanager'),
+    ], ['class' => 'form-select custom-select exammanager-bulk-set-toggle', 'data-bulk-set-toggle' => 'profile']));
     $html .= html_writer::end_div();
     $html .= html_writer::end_div();
 
     $html .= html_writer::start_div('local-exammanager-bulk-group local-exammanager-bulk-remove', $groupattrs('remove'));
-    $html .= html_writer::tag('strong', 'Enlever toutes les restrictions de cette cible.');
+    $html .= html_writer::tag('strong', get_string('removealltargetrestrictions', 'local_exammanager'));
     $html .= html_writer::end_div();
 
     $html .= html_writer::end_div();
@@ -441,17 +456,17 @@ $renderbulkrestriction = function(int $idx, array $source) use ($renderbulkinput
 
 $renderdatefields = function(string $prefix = '') use ($renderselect): string {
     $directionoptions = [
-        'from' => 'À partir d’une date',
-        'until' => 'Jusqu’à une date',
+        'from' => get_string('direction_from_long', 'local_exammanager'),
+        'until' => get_string('direction_until_long', 'local_exammanager'),
     ];
 
     $html = html_writer::start_div('local-exammanager-formrow');
     $html .= html_writer::start_div();
-    $html .= html_writer::tag('label', 'Restriction de date');
+    $html .= html_writer::tag('label', get_string('daterestrictionlabel', 'local_exammanager'));
     $html .= $renderselect($prefix . 'date_direction', $directionoptions, 'from');
     $html .= html_writer::end_div();
     $html .= html_writer::start_div();
-    $html .= html_writer::tag('label', 'Date et heure');
+    $html .= html_writer::tag('label', get_string('datetimelabel', 'local_exammanager'));
     $html .= html_writer::empty_tag('input', [
         'type' => 'datetime-local',
         'name' => $prefix . 'date_time',
@@ -465,11 +480,11 @@ $renderdatefields = function(string $prefix = '') use ($renderselect): string {
 $rendergradefields = function(string $prefix, array $gradeoptions) use ($renderselect): string {
     $html = html_writer::start_div('local-exammanager-formrow');
     $html .= html_writer::start_div();
-    $html .= html_writer::tag('label', 'Note');
+    $html .= html_writer::tag('label', get_string('restrictionkind_grade', 'local_exammanager'));
     $html .= $renderselect($prefix . 'grade_itemid', $gradeoptions, '');
     $html .= html_writer::end_div();
     $html .= html_writer::start_div();
-    $html .= html_writer::tag('label', 'Minimum (%)');
+    $html .= html_writer::tag('label', get_string('minimumpercent_long', 'local_exammanager'));
     $html .= html_writer::empty_tag('input', [
         'type' => 'number',
         'name' => $prefix . 'grade_min',
@@ -477,11 +492,11 @@ $rendergradefields = function(string $prefix, array $gradeoptions) use ($renders
         'min' => '0',
         'max' => '100',
         'step' => '0.01',
-        'placeholder' => 'Ex. 50',
+        'placeholder' => get_string('gradeexampleplaceholder', 'local_exammanager'),
     ]);
     $html .= html_writer::end_div();
     $html .= html_writer::start_div();
-    $html .= html_writer::tag('label', 'Maximum (%)');
+    $html .= html_writer::tag('label', get_string('maximumpercent_long', 'local_exammanager'));
     $html .= html_writer::empty_tag('input', [
         'type' => 'number',
         'name' => $prefix . 'grade_max',
@@ -489,7 +504,7 @@ $rendergradefields = function(string $prefix, array $gradeoptions) use ($renders
         'min' => '0',
         'max' => '100',
         'step' => '0.01',
-        'placeholder' => 'Optionnel',
+        'placeholder' => get_string('optionalplaceholder', 'local_exammanager'),
     ]);
     $html .= html_writer::end_div();
     $html .= html_writer::end_div();
@@ -498,28 +513,28 @@ $rendergradefields = function(string $prefix, array $gradeoptions) use ($renders
 
 $renderprofilefields = function(string $prefix, array $profileoptions) use ($renderselect): string {
     $operatoroptions = [
-        'isequalto' => 'est égal à',
-        'contains' => 'contient',
-        'doesnotcontain' => 'ne contient pas',
-        'startswith' => 'commence par',
-        'endswith' => 'se termine par',
-        'isempty' => 'est vide',
-        'isnotempty' => 'n’est pas vide',
+        'isequalto' => get_string('profileop_isequalto', 'local_exammanager'),
+        'contains' => get_string('profileop_contains', 'local_exammanager'),
+        'doesnotcontain' => get_string('profileop_doesnotcontain', 'local_exammanager'),
+        'startswith' => get_string('profileop_startswith', 'local_exammanager'),
+        'endswith' => get_string('profileop_endswith', 'local_exammanager'),
+        'isempty' => get_string('profileop_isempty', 'local_exammanager'),
+        'isnotempty' => get_string('profileop_isnotempty', 'local_exammanager'),
     ];
 
     $html = html_writer::start_div('local-exammanager-formrow');
     $html .= html_writer::start_div();
-    $html .= html_writer::tag('label', 'Champ');
+    $html .= html_writer::tag('label', get_string('fieldlabel', 'local_exammanager'));
     $html .= $renderselect($prefix . 'profile_field', $profileoptions, '');
     $html .= html_writer::end_div();
     $html .= html_writer::start_div();
-    $html .= html_writer::tag('label', 'Condition');
+    $html .= html_writer::tag('label', get_string('conditionlabel', 'local_exammanager'));
     $html .= $renderselect($prefix . 'profile_operator', $operatoroptions, 'isequalto', [
         'class' => 'form-select custom-select exammanager-profile-operator',
     ]);
     $html .= html_writer::end_div();
     $html .= html_writer::start_div();
-    $html .= html_writer::tag('label', 'Valeur');
+    $html .= html_writer::tag('label', get_string('valuelabel', 'local_exammanager'));
     $html .= html_writer::empty_tag('input', [
         'type' => 'text',
         'name' => $prefix . 'profile_value',
@@ -534,10 +549,10 @@ echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
 echo \local_exammanager\output\navbar::render('activities');
 
-echo '<div class="local-exammanager-hero">';
-echo '<h2>Planifier des activités</h2>';
-echo '<div class="local-exammanager-muted">Restrictions d’accès par shortname de cours</div>';
-echo '</div>';
+echo $OUTPUT->render_from_template('local_exammanager/hero', [
+    'title' => get_string('activitiesplanning', 'local_exammanager'),
+    'subtitle' => get_string('activities_hero_subtitle', 'local_exammanager'),
+]);
 
 if ($applymessage !== '') {
     echo $OUTPUT->notification($applymessage, $applymessagetype);
@@ -545,7 +560,7 @@ if ($applymessage !== '') {
 
 echo '<div class="local-exammanager-panel">';
 echo '<form method="get" class="local-exammanager-inline-form">';
-echo html_writer::tag('label', 'Shortname du cours', ['for' => 'exammanager-shortname']);
+echo html_writer::tag('label', get_string('courseshortnamelabel', 'local_exammanager'), ['for' => 'exammanager-shortname']);
 echo html_writer::empty_tag('input', [
     'type' => 'text',
     'id' => 'exammanager-shortname',
@@ -554,25 +569,25 @@ echo html_writer::empty_tag('input', [
     'class' => 'form-control',
     'required' => 'required',
 ]);
-echo '<button class="btn btn-primary" type="submit">Prévisualiser les activités</button>';
+echo '<button class="btn btn-primary" type="submit">' . get_string('previewactivities', 'local_exammanager') . '</button>';
 echo '</form>';
 echo '</div>';
 
 echo '<div class="local-exammanager-panel">';
-echo '<h3 class="local-exammanager-sectiontitle">Restrictions en masse</h3>';
+echo '<h3 class="local-exammanager-sectiontitle">' . get_string('bulkrestrictions_title', 'local_exammanager') . '</h3>';
 echo '<div class="local-exammanager-activity-toolbar">';
-echo '<a href="' . new moodle_url('/local/exammanager/download_activity_template.php', ['sesskey' => sesskey()]) . '" class="btn btn-secondary">Télécharger modèle Excel</a>';
+echo '<a href="' . new moodle_url('/local/exammanager/download_activity_template.php', ['sesskey' => sesskey()]) . '" class="btn btn-secondary">' . get_string('downloadexceltemplate', 'local_exammanager') . '</a>';
 echo '</div>';
 echo '<form method="post" enctype="multipart/form-data" class="local-exammanager-bulk-upload">';
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'bulkpreview']);
 echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'shortname', 'value' => $shortname]);
 echo '<div class="local-exammanager-dropzone">';
-echo '<div><strong>Glissez-déposez ou cliquez</strong></div>';
+echo '<div><strong>' . get_string('dropzonelabel', 'local_exammanager') . '</strong></div>';
 echo '<input type="file" name="activityfile" accept=".csv,.xlsx,.xls" required>';
 echo '</div>';
 echo '<br>';
-echo '<button class="btn btn-primary" type="submit">Prévisualiser le fichier</button>';
+echo '<button class="btn btn-primary" type="submit">' . get_string('previewfile', 'local_exammanager') . '</button>';
 echo '</form>';
 echo '</div>';
 
@@ -585,10 +600,10 @@ if (!empty($bulkrows)) {
     }
 
     echo '<div class="local-exammanager-panel">';
-    echo '<h3 class="local-exammanager-sectiontitle">Prévisualisation du fichier</h3>';
+    echo '<h3 class="local-exammanager-sectiontitle">' . get_string('filepreview_title', 'local_exammanager') . '</h3>';
     echo '<div class="local-exammanager-activity-summary">';
-    echo '<span>' . count($bulkrows) . ' ligne(s)</span>';
-    echo '<span>' . $readycount . ' prête(s)</span>';
+    echo '<span>' . get_string('linescount', 'local_exammanager', count($bulkrows)) . '</span>';
+    echo '<span>' . get_string('readycountlabel', 'local_exammanager', $readycount) . '</span>';
     echo '</div>';
 
     echo '<form method="post">';
@@ -597,7 +612,18 @@ if (!empty($bulkrows)) {
     echo '<div class="local-exammanager-preview-wrap">';
     echo '<table class="generaltable local-exammanager-bulk-table">';
     echo '<thead><tr>';
-    foreach (['Ligne', 'Cours', 'Cible', 'Section / tuile', 'Activité', 'Restriction', 'Résolu', 'Statut', 'Message'] as $heading) {
+    $bulktableheadings = [
+        get_string('bulkcol_line', 'local_exammanager'),
+        get_string('course', 'local_exammanager'),
+        get_string('bulkcol_target', 'local_exammanager'),
+        get_string('bulkcol_sectiontile', 'local_exammanager'),
+        get_string('activitylabel', 'local_exammanager'),
+        get_string('bulkcol_restriction', 'local_exammanager'),
+        get_string('bulkcol_resolved', 'local_exammanager'),
+        get_string('status', 'local_exammanager'),
+        get_string('message', 'local_exammanager'),
+    ];
+    foreach ($bulktableheadings as $heading) {
         echo html_writer::tag('th', s($heading));
     }
     echo '</tr></thead><tbody>';
@@ -614,8 +640,8 @@ if (!empty($bulkrows)) {
             'style' => 'min-width:130px;',
         ]));
         echo html_writer::tag('td', $renderbulkselect($idx, 'target_type', $source, [
-            'sections' => 'Sections / tuiles',
-            'activities' => 'Activités',
+            'sections' => get_string('targettype_sections', 'local_exammanager'),
+            'activities' => get_string('targettype_activities', 'local_exammanager'),
         ], ['class' => 'form-select custom-select exammanager-bulk-target-type']));
         echo html_writer::tag('td', $renderbulksectionselect($idx, $source));
         echo html_writer::tag('td', $renderbulkactivityselect($idx, $source));
@@ -630,8 +656,8 @@ if (!empty($bulkrows)) {
     echo '</div>';
 
     echo '<div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">';
-    echo '<button class="btn btn-outline-secondary" type="submit" name="action" value="bulkrefresh">Actualiser la prévisualisation</button>';
-    echo '<button class="btn btn-success" type="submit" name="action" value="bulkapply" ' . ($readycount > 0 ? '' : 'disabled') . '>Appliquer toutes les lignes prêtes</button>';
+    echo '<button class="btn btn-outline-secondary" type="submit" name="action" value="bulkrefresh">' . get_string('refreshpreview', 'local_exammanager') . '</button>';
+    echo '<button class="btn btn-success" type="submit" name="action" value="bulkapply" ' . ($readycount > 0 ? '' : 'disabled') . '>' . get_string('applyallreadyrows', 'local_exammanager') . '</button>';
     echo '</div>';
     echo '</form>';
 
@@ -640,7 +666,7 @@ if (!empty($bulkrows)) {
 }
 
 if ($shortname !== '' && !$course) {
-    echo $OUTPUT->notification('Shortname du cours introuvable.', 'notifyproblem');
+    echo $OUTPUT->notification(get_string('shortnamenotfound', 'local_exammanager'), 'notifyproblem');
 }
 
 if ($course) {
@@ -649,12 +675,12 @@ if ($course) {
     $gradeitems = \local_exammanager\activity_planner::get_grade_items((int)$course->id);
     $profilefields = \local_exammanager\activity_planner::get_profile_fields();
 
-    $gradeoptions = ['' => 'Choisir une note'];
+    $gradeoptions = ['' => get_string('choosegradeitem', 'local_exammanager')];
     foreach ($gradeitems as $item) {
         $gradeoptions[(string)$item['id']] = $item['label'];
     }
 
-    $profileoptions = ['' => 'Choisir un champ'];
+    $profileoptions = ['' => get_string('choosefield', 'local_exammanager')];
     foreach ($profilefields as $field) {
         $profileoptions[$field['value']] = $field['label'];
     }
@@ -665,47 +691,54 @@ if ($course) {
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'shortname', 'value' => $course->shortname]);
 
     echo '<div class="local-exammanager-panel">';
-    echo '<h3 class="local-exammanager-sectiontitle">Résultats</h3>';
+    echo '<h3 class="local-exammanager-sectiontitle">' . get_string('results', 'local_exammanager') . '</h3>';
     echo '<div class="local-exammanager-activity-summary">';
     echo '<strong>' . format_string($course->fullname) . '</strong>';
     echo '<span>' . s($course->shortname) . '</span>';
-    echo '<span>' . count($sections) . ' section(s) / tuile(s)</span>';
-    echo '<span>' . count($activities) . ' activité(s)</span>';
+    echo '<span>' . get_string('sectionscount', 'local_exammanager', count($sections)) . '</span>';
+    echo '<span>' . get_string('activitiescount', 'local_exammanager', count($activities)) . '</span>';
     echo '</div>';
 
     echo '<div class="local-exammanager-target-switch">';
     echo '<div>';
-    echo html_writer::tag('label', 'Élément à restreindre');
+    echo html_writer::tag('label', get_string('elementtorestrict', 'local_exammanager'));
     echo $renderselect('targettype', [
-        'sections' => 'Sections / tuiles',
-        'activities' => 'Activités',
+        'sections' => get_string('targettype_sections', 'local_exammanager'),
+        'activities' => get_string('targettype_activities', 'local_exammanager'),
     ], 'sections', ['id' => 'exammanager-target-type']);
     echo '</div>';
     echo '<div class="local-exammanager-activity-toolbar">';
-    echo '<button type="button" class="btn btn-outline-secondary" id="exammanager-select-all">Tout sélectionner</button>';
-    echo '<button type="button" class="btn btn-outline-secondary" id="exammanager-select-none">Tout désélectionner</button>';
+    echo '<button type="button" class="btn btn-outline-secondary" id="exammanager-select-all">' . get_string('selectalllabel', 'local_exammanager') . '</button>';
+    echo '<button type="button" class="btn btn-outline-secondary" id="exammanager-select-none">' . get_string('selectnonelabel', 'local_exammanager') . '</button>';
     echo '</div>';
     echo '</div>';
 
     echo '<div data-target-panel="sections">';
     if (empty($sections)) {
-        echo $OUTPUT->notification('Aucune section ou tuile trouvée dans ce cours.', 'notifyproblem');
+        echo $OUTPUT->notification(get_string('nosectionfoundincourse', 'local_exammanager'), 'notifyproblem');
     } else {
         echo '<div class="local-exammanager-preview-wrap">';
         echo '<table class="generaltable local-exammanager-activity-table">';
         echo '<thead><tr>';
-        foreach (['', 'Tuile / section', 'Activités', 'Visibilité', 'Restrictions'] as $heading) {
+        $sectiontableheadings = [
+            '',
+            get_string('sectioncol_tile', 'local_exammanager'),
+            get_string('targettype_activities', 'local_exammanager'),
+            get_string('visibilitylabel', 'local_exammanager'),
+            get_string('restrictionslabel', 'local_exammanager'),
+        ];
+        foreach ($sectiontableheadings as $heading) {
             echo html_writer::tag('th', s($heading));
         }
         echo '</tr></thead><tbody>';
 
         foreach ($sections as $section) {
             $visiblebadge = $section['visible']
-                ? html_writer::span('Visible', 'local-exammanager-badge ok')
-                : html_writer::span('Masquée', 'local-exammanager-badge warn');
+                ? html_writer::span(get_string('visiblelabel', 'local_exammanager'), 'local-exammanager-badge ok')
+                : html_writer::span(get_string('hiddenlabel', 'local_exammanager'), 'local-exammanager-badge warn');
             $restrictionbadge = $section['availability'] !== ''
-                ? html_writer::span('Déjà présentes', 'local-exammanager-badge info')
-                : html_writer::span('Aucune', 'local-exammanager-badge neutral');
+                ? html_writer::span(get_string('restrictionspresent', 'local_exammanager'), 'local-exammanager-badge info')
+                : html_writer::span(get_string('restrictionsnone', 'local_exammanager'), 'local-exammanager-badge neutral');
 
             echo '<tr class="exammanager-section-target-row">';
             echo html_writer::tag('td', html_writer::empty_tag('input', [
@@ -728,13 +761,21 @@ if ($course) {
 
     echo '<div data-target-panel="activities">';
     if (empty($activities)) {
-        echo $OUTPUT->notification('Aucune activité trouvée dans ce cours.', 'notifyproblem');
+        echo $OUTPUT->notification(get_string('noactivityfoundincourse', 'local_exammanager'), 'notifyproblem');
     } else {
 
         echo '<div class="local-exammanager-preview-wrap">';
         echo '<table class="generaltable local-exammanager-activity-table">';
         echo '<thead><tr>';
-        foreach (['', 'Tuile / section', 'Activité', 'Type', 'Visibilité', 'Restrictions'] as $heading) {
+        $activitytableheadings = [
+            '',
+            get_string('sectioncol_tile', 'local_exammanager'),
+            get_string('activitylabel', 'local_exammanager'),
+            get_string('moduletypelabel', 'local_exammanager'),
+            get_string('visibilitylabel', 'local_exammanager'),
+            get_string('restrictionslabel', 'local_exammanager'),
+        ];
+        foreach ($activitytableheadings as $heading) {
             echo html_writer::tag('th', s($heading));
         }
         echo '</tr></thead><tbody>';
@@ -753,11 +794,11 @@ if ($course) {
             }
 
             $visiblebadge = $activity['visible']
-                ? html_writer::span('Visible', 'local-exammanager-badge ok')
-                : html_writer::span('Masquée', 'local-exammanager-badge warn');
+                ? html_writer::span(get_string('visiblelabel', 'local_exammanager'), 'local-exammanager-badge ok')
+                : html_writer::span(get_string('hiddenlabel', 'local_exammanager'), 'local-exammanager-badge warn');
             $restrictionbadge = $activity['availability'] !== ''
-                ? html_writer::span('Déjà présentes', 'local-exammanager-badge info')
-                : html_writer::span('Aucune', 'local-exammanager-badge neutral');
+                ? html_writer::span(get_string('restrictionspresent', 'local_exammanager'), 'local-exammanager-badge info')
+                : html_writer::span(get_string('restrictionsnone', 'local_exammanager'), 'local-exammanager-badge neutral');
             $activityname = $activity['url'] !== ''
                 ? html_writer::link(new moodle_url($activity['url']), $activity['name'])
                 : s($activity['name']);
@@ -784,21 +825,21 @@ if ($course) {
     echo '</div>';
 
     echo '<div class="local-exammanager-panel">';
-    echo '<h3 class="local-exammanager-sectiontitle">Restriction à appliquer</h3>';
+    echo '<h3 class="local-exammanager-sectiontitle">' . get_string('restrictiontoapply_title', 'local_exammanager') . '</h3>';
     echo '<div class="local-exammanager-restriction-simple">';
     echo '<div>';
-    echo html_writer::tag('label', 'Type de restriction');
+    echo html_writer::tag('label', get_string('restrictiontype_label', 'local_exammanager'));
     echo $renderselect('restrictionkind', [
-        'date' => 'Date',
-        'grade' => 'Note',
-        'profile' => 'Profil utilisateur',
-        'set' => 'Jeu de restrictions',
-        'remove' => 'Enlever les restrictions',
+        'date' => get_string('restrictionkind_date', 'local_exammanager'),
+        'grade' => get_string('restrictionkind_grade', 'local_exammanager'),
+        'profile' => get_string('restrictionkind_profile', 'local_exammanager'),
+        'set' => get_string('restrictionkind_set', 'local_exammanager'),
+        'remove' => get_string('restrictionkind_remove', 'local_exammanager'),
     ], 'date', ['id' => 'exammanager-restriction-kind']);
     echo '</div>';
     echo '<label class="local-exammanager-checkline local-exammanager-showline">';
     echo html_writer::empty_tag('input', ['type' => 'checkbox', 'name' => 'showrestriction', 'value' => '1', 'checked' => 'checked']);
-    echo '<span>Afficher l’élément grisé quand la restriction n’est pas remplie</span>';
+    echo '<span>' . get_string('showgreyedoutlabel', 'local_exammanager') . '</span>';
     echo '</label>';
     echo '</div>';
 
@@ -808,7 +849,7 @@ if ($course) {
 
     echo '<div class="local-exammanager-restriction-fields" data-restriction-fields="grade">';
     if (count($gradeoptions) <= 1) {
-        echo $OUTPUT->notification('Aucune note disponible pour ce cours.', 'notifyproblem');
+        echo $OUTPUT->notification(get_string('nogradeavailableforcourse', 'local_exammanager'), 'notifyproblem');
     }
     echo $rendergradefields('', $gradeoptions);
     echo '</div>';
@@ -820,15 +861,18 @@ if ($course) {
     echo '<div class="local-exammanager-restriction-fields" data-restriction-fields="set">';
     echo '<div class="local-exammanager-formrow">';
     echo '<div>';
-    echo html_writer::tag('label', 'Logique du jeu');
-    echo $renderselect('set_operator', ['&' => 'Toutes les restrictions (ET)', '|' => 'Au moins une restriction (OU)'], '&');
+    echo html_writer::tag('label', get_string('setlogiclabel', 'local_exammanager'));
+    echo $renderselect('set_operator', [
+        '&' => get_string('alllogic_and', 'local_exammanager'),
+        '|' => get_string('anylogic_or', 'local_exammanager'),
+    ], '&');
     echo '</div>';
     echo '</div>';
 
     foreach ([
-        'date' => ['Date', $renderdatefields('set_')],
-        'grade' => ['Note', $rendergradefields('set_', $gradeoptions)],
-        'profile' => ['Profil utilisateur', $renderprofilefields('set_', $profileoptions)],
+        'date' => [get_string('restrictionkind_date', 'local_exammanager'), $renderdatefields('set_')],
+        'grade' => [get_string('restrictionkind_grade', 'local_exammanager'), $rendergradefields('set_', $gradeoptions)],
+        'profile' => [get_string('restrictionkind_profile', 'local_exammanager'), $renderprofilefields('set_', $profileoptions)],
     ] as $setkey => $setdata) {
         echo '<label class="local-exammanager-checkline exammanager-set-toggle">';
         echo html_writer::empty_tag('input', ['type' => 'checkbox', 'name' => 'set_' . $setkey, 'value' => '1']);
@@ -841,7 +885,7 @@ if ($course) {
     echo '</div>';
 
     echo '<div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">';
-    echo '<button class="btn btn-success" type="submit" id="exammanager-apply-activities-btn">Appliquer aux sections / tuiles sélectionnées</button>';
+    echo '<button class="btn btn-success" type="submit" id="exammanager-apply-activities-btn">' . get_string('activityapply_applysections', 'local_exammanager') . '</button>';
     echo '</div>';
     echo '</div>';
 

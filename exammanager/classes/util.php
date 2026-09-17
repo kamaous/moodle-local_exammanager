@@ -30,7 +30,7 @@ defined('MOODLE_INTERNAL') || die();
 class util {
 
     /**
-     * Génère un code unique (5 chiffres)
+     * Generates a unique code (5 digits).
      */
     public static function generate_code(array &$used): string {
 
@@ -81,7 +81,7 @@ class util {
             }
         }
 
-        throw new \moodle_exception('Format date invalide : ' . $value);
+        throw new \moodle_exception(get_string('dateformatinvalidwithvalue', 'local_exammanager', $value));
     }
 
     /**
@@ -111,49 +111,49 @@ class util {
     }
 
     /**
-     * Validation d'une ligne du planning
+     * Validates one row of the planning.
      */
     public static function validate_row(array $row): array {
 
         if (empty($row['course_shortname'])) {
-            return [false, 'Course_shortname manquant'];
+            return [false, get_string('coursemissing', 'local_exammanager')];
         }
 
         if (empty($row['quiz_name']) && empty($row['selected_quizid'])) {
-            return [false, 'Quiz non sélectionné'];
+            return [false, get_string('validation_quiznotselected', 'local_exammanager')];
         }
 
         if (empty($row['open_time']) || empty($row['close_time'])) {
-            return [false, 'Dates manquantes'];
+            return [false, get_string('datesmissing', 'local_exammanager')];
         }
 
         try {
             $timeopen = self::parse_datetime((string)$row['open_time']);
             $timeclose = self::parse_datetime((string)$row['close_time']);
         } catch (\Throwable $e) {
-            return [false, 'Format de date invalide'];
+            return [false, get_string('invaliddateformat', 'local_exammanager')];
         }
 
         if ($timeclose <= $timeopen) {
-            return [false, 'La date de fermeture doit être postérieure à la date d\'ouverture.'];
+            return [false, get_string('validation_closeafteropen', 'local_exammanager')];
         }
 
         if (!isset($row['time_limit']) || $row['time_limit'] === '') {
-            return [false, 'Durée manquante'];
+            return [false, get_string('durationmissing', 'local_exammanager')];
         }
 
         if ((int)$row['time_limit'] <= 0) {
-            return [false, 'La durée doit être supérieure à 0 minute.'];
+            return [false, get_string('validation_durationrequired', 'local_exammanager')];
         }
 
         $accessaction = self::normalize_access_action($row);
         if (!in_array($accessaction, ['keep', 'generate', 'disable'], true)) {
-            return [false, 'access_code_action invalide'];
+            return [false, get_string('invalidaccessaction', 'local_exammanager')];
         }
 
         $sebaction = self::normalize_seb_action($row);
         if (!in_array($sebaction, ['keep', 'generate', 'disable'], true)) {
-            return [false, 'seb_action invalide'];
+            return [false, get_string('invalidsebaction', 'local_exammanager')];
         }
 
         return [true, 'OK'];
@@ -162,7 +162,7 @@ class util {
 
 
     /**
-     * Clé de mutualisation des codes par cours + date/heure d'ouverture.
+     * Code-sharing key based on course + opening date/time.
      */
     public static function build_code_sharing_key(array $row): string {
         $course = strtolower(trim((string)($row['course_shortname'] ?? '')));
@@ -186,9 +186,9 @@ class util {
     }
 
     /**
-     * Affecte des codes générés partagés pour un même course_shortname et une même date/heure.
-     * Les lignes déjà programmées peuvent servir de référence si $preserveprogrammed = true.
-     * Si $allowsharedcodes = false, chaque ligne reçoit ses propres codes uniques.
+     * Assigns shared generated codes for a given course_shortname and date/time.
+     * Already-programmed rows can be used as a reference if $preserveprogrammed = true.
+     * If $allowsharedcodes = false, each row receives its own unique codes.
      */
     public static function assign_shared_generated_codes(array $rows, bool $preserveprogrammed = false, bool $allowsharedcodes = true): array {
         $used = [];
@@ -294,8 +294,8 @@ class util {
     }
 
     /**
-     * Action code d'accès.
-     * Priorité au nouveau champ, avec repli sur l'ancien comportement.
+     * Access code action.
+     * Priority is given to the new field, falling back to the old behaviour.
      */
     public static function normalize_access_action(array $row): string {
         if (array_key_exists('access_code_action', $row) && trim((string)$row['access_code_action']) !== '') {
@@ -313,8 +313,8 @@ class util {
     }
 
     /**
-     * Action Safe Exam Browser.
-     * Priorité au nouveau champ, avec repli sur l'ancien comportement.
+     * Safe Exam Browser action.
+     * Priority is given to the new field, falling back to the old behaviour.
      */
     public static function normalize_seb_action(array $row): string {
         if (array_key_exists('seb_action', $row) && trim((string)$row['seb_action']) !== '') {

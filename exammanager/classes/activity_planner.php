@@ -138,10 +138,12 @@ class activity_planner {
 
     private static function get_section_label(\stdClass $course, int $sectionnum, $sectioninfo): string {
         if ($sectionnum === 0) {
-            return 'Général';
+            return get_string('generalsectionlabel', 'local_exammanager');
         }
 
-        $base = ((string)($course->format ?? '') === 'tiles') ? 'Tuile ' . $sectionnum : 'Section ' . $sectionnum;
+        $base = ((string)($course->format ?? '') === 'tiles')
+            ? get_string('tilelabel', 'local_exammanager') . ' ' . $sectionnum
+            : get_string('section') . ' ' . $sectionnum;
         $sectionname = '';
 
         if (function_exists('get_section_name')) {
@@ -262,7 +264,7 @@ class activity_planner {
         }
 
         if (!in_array($kind, ['date', 'grade', 'profile', 'set'], true)) {
-            return [null, 'Type de restriction invalide.'];
+            return [null, get_string('invalidrestrictiontype', 'local_exammanager')];
         }
 
         if ($kind !== 'set') {
@@ -283,7 +285,7 @@ class activity_planner {
         }
 
         if (empty($children)) {
-            return [null, 'Le jeu de restrictions doit contenir au moins une restriction.'];
+            return [null, get_string('restrictionsetneedsatleastone', 'local_exammanager')];
         }
 
         $operator = self::scalar($data, 'set_operator') === '|' ? '|' : '&';
@@ -422,7 +424,7 @@ class activity_planner {
                 self::source_rows_equal($previoussource, $previewrow['source_row'] ?? [])
             ) {
                 $previewrow['status'] = (string)$previousrow['status'];
-                $previewrow['message'] = (string)($previousrow['message'] ?? 'Restriction déjà appliquée.');
+                $previewrow['message'] = (string)($previousrow['message'] ?? get_string('restrictionalreadyapplied', 'local_exammanager'));
             }
         }
         unset($previewrow);
@@ -435,7 +437,7 @@ class activity_planner {
         if ($status !== 'READY') {
             return [
                 'status' => 'ERROR',
-                'message' => (string)($row['message'] ?? 'Ligne non prête.'),
+                'message' => (string)($row['message'] ?? get_string('rownotready', 'local_exammanager')),
             ];
         }
 
@@ -443,7 +445,7 @@ class activity_planner {
         if (!$course) {
             return [
                 'status' => 'ERROR',
-                'message' => 'Shortname du cours introuvable.',
+                'message' => get_string('shortnamenotfound', 'local_exammanager'),
             ];
         }
 
@@ -451,7 +453,7 @@ class activity_planner {
         if (!$restriction) {
             return [
                 'status' => 'ERROR',
-                'message' => 'Restriction invalide.',
+                'message' => get_string('invalidrestriction', 'local_exammanager'),
             ];
         }
 
@@ -464,8 +466,8 @@ class activity_planner {
             return [
                 'status' => ((int)$result['updated'] > 0) ? 'APPLIQUÉ' : 'ERROR',
                 'message' => ((int)$result['updated'] > 0)
-                    ? ($remove ? 'Restrictions de la section / tuile supprimées' : 'Section / tuile mise à jour')
-                    : 'Aucune section / tuile mise à jour',
+                    ? ($remove ? get_string('sectionrestrictionscleared', 'local_exammanager') : get_string('sectiontileupdated', 'local_exammanager'))
+                    : get_string('nosectiontileupdated', 'local_exammanager'),
             ];
         }
 
@@ -473,8 +475,8 @@ class activity_planner {
         return [
             'status' => ((int)$result['updated'] > 0) ? 'APPLIQUÉ' : 'ERROR',
             'message' => ((int)$result['updated'] > 0)
-                ? ($remove ? 'Restrictions de l’activité supprimées' : 'Activité mise à jour')
-                : 'Aucune activité mise à jour',
+                ? ($remove ? get_string('activityrestrictionscleared', 'local_exammanager') : get_string('activityupdated', 'local_exammanager'))
+                : get_string('noactivityupdated', 'local_exammanager'),
         ];
     }
 
@@ -501,13 +503,13 @@ class activity_planner {
         ];
 
         if ($course_shortname === '') {
-            $base['message'] = 'course_shortname manquant.';
+            $base['message'] = get_string('coursemissing', 'local_exammanager');
             return $base;
         }
 
         $course = self::get_course_by_shortname($course_shortname);
         if (!$course) {
-            $base['message'] = 'Shortname du cours introuvable.';
+            $base['message'] = get_string('shortnamenotfound', 'local_exammanager');
             return $base;
         }
 
@@ -526,7 +528,7 @@ class activity_planner {
 
         $restrictionjson = json_encode($restriction);
         if ($restrictionjson === false) {
-            $base['message'] = 'Impossible de préparer la restriction.';
+            $base['message'] = get_string('cannotpreparerestriction', 'local_exammanager');
             return $base;
         }
 
@@ -535,7 +537,7 @@ class activity_planner {
         $base['restriction_label'] = $restrictionlabel;
         $base['restriction_json'] = $restrictionjson;
         $base['status'] = 'READY';
-        $base['message'] = 'Prévisualisation OK';
+        $base['message'] = get_string('previewok', 'local_exammanager');
 
         return $base;
     }
@@ -642,19 +644,19 @@ class activity_planner {
     private static function resolve_import_target(\stdClass $course, string $targettype, string $sectionvalue, string $activityvalue): array {
         if ($targettype === 'sections') {
             if ($sectionvalue === '') {
-                return [0, '', 'Section / tuile manquante.'];
+                return [0, '', get_string('sectiontilemissing', 'local_exammanager')];
             }
 
             $section = self::find_section($course, $sectionvalue);
             if (!$section) {
-                return [0, '', 'Section / tuile introuvable : ' . $sectionvalue];
+                return [0, '', get_string('sectiontilenotfoundwithvalue', 'local_exammanager', $sectionvalue)];
             }
 
             return [(int)$section['id'], (string)$section['label'], ''];
         }
 
         if ($activityvalue === '') {
-            return [0, '', 'Activité manquante.'];
+            return [0, '', get_string('activitymissing', 'local_exammanager')];
         }
 
         $activities = self::get_course_activities($course);
@@ -673,11 +675,11 @@ class activity_planner {
         }
 
         if (empty($matches)) {
-            return [0, '', 'Activité introuvable : ' . $activityvalue];
+            return [0, '', get_string('activitynotfoundwithvalue', 'local_exammanager', $activityvalue)];
         }
 
         if (count($matches) > 1) {
-            return [0, '', 'Activité ambiguë, indiquez aussi la section / tuile : ' . $activityvalue];
+            return [0, '', get_string('activityambiguouswithvalue', 'local_exammanager', $activityvalue)];
         }
 
         $activity = $matches[0];
@@ -933,7 +935,7 @@ class activity_planner {
         if ($kind === 'profile') {
             return self::build_profile_condition($data, $prefix);
         }
-        return [null, 'Type de restriction invalide.'];
+        return [null, get_string('invalidrestrictiontype', 'local_exammanager')];
     }
 
     private static function build_date_condition(array $data, string $prefix): array {
@@ -941,13 +943,13 @@ class activity_planner {
         $datetime = self::scalar($data, $prefix . 'date_time');
 
         if ($datetime === '') {
-            return [null, 'La date de restriction est obligatoire.'];
+            return [null, get_string('daterestrictionrequired', 'local_exammanager')];
         }
 
         try {
             $timestamp = util::parse_datetime($datetime);
         } catch (\Throwable $e) {
-            return [null, 'Format de date invalide.'];
+            return [null, get_string('invaliddateformat', 'local_exammanager')];
         }
 
         $direction = $directionkey === 'until' ? '<' : '>=';
@@ -964,33 +966,33 @@ class activity_planner {
         $maxraw = self::scalar($data, $prefix . 'grade_max');
 
         if ($gradeitemid <= 0) {
-            return [null, 'La note de référence est obligatoire.'];
+            return [null, get_string('gradereferencerequired', 'local_exammanager')];
         }
 
         if ($minraw === '' && $maxraw === '') {
-            return [null, 'Indiquez une note minimale ou maximale.'];
+            return [null, get_string('grademinmaxrequired', 'local_exammanager')];
         }
 
         $min = null;
         $max = null;
         if ($minraw !== '') {
             if (!is_numeric($minraw)) {
-                return [null, 'La note minimale doit être numérique.'];
+                return [null, get_string('grademinnotnumeric', 'local_exammanager')];
             }
             $min = (float)$minraw;
         }
         if ($maxraw !== '') {
             if (!is_numeric($maxraw)) {
-                return [null, 'La note maximale doit être numérique.'];
+                return [null, get_string('grademaxnotnumeric', 'local_exammanager')];
             }
             $max = (float)$maxraw;
         }
 
         if (($min !== null && ($min < 0 || $min > 100)) || ($max !== null && ($max < 0 || $max > 100))) {
-            return [null, 'Les notes doivent être entre 0 et 100 %.'];
+            return [null, get_string('gradesmustbepercent', 'local_exammanager')];
         }
         if ($min !== null && $max !== null && $max <= $min) {
-            return [null, 'La note maximale doit être supérieure à la note minimale.'];
+            return [null, get_string('grademaxmustexceedmin', 'local_exammanager')];
         }
 
         if (class_exists('\\availability_grade\\condition')) {
@@ -1014,15 +1016,15 @@ class activity_planner {
         $allowedoperators = ['isequalto', 'contains', 'doesnotcontain', 'startswith', 'endswith', 'isempty', 'isnotempty'];
 
         if (!preg_match('/^(sf|cf)_[A-Za-z0-9_-]+$/', $field)) {
-            return [null, 'Champ de profil invalide.'];
+            return [null, get_string('invalidprofilefield', 'local_exammanager')];
         }
         if (!in_array($operator, $allowedoperators, true)) {
-            return [null, 'Opérateur de profil invalide.'];
+            return [null, get_string('invalidprofileoperator', 'local_exammanager')];
         }
 
         $needsvalue = !in_array($operator, ['isempty', 'isnotempty'], true);
         if ($needsvalue && $value === '') {
-            return [null, 'La valeur du profil utilisateur est obligatoire.'];
+            return [null, get_string('profilevaluerequired', 'local_exammanager')];
         }
 
         $iscustomfield = strpos($field, 'cf_') === 0;
@@ -1054,7 +1056,7 @@ class activity_planner {
 
         $existing = json_decode($current);
         if (!$existing || !isset($existing->op) || !isset($existing->c) || !is_array($existing->c)) {
-            throw new \moodle_exception('Structure de disponibilité existante invalide.');
+            throw new \moodle_exception(get_string('invalidexistingavailabilitystructure', 'local_exammanager'));
         }
 
         if ((string)$existing->op === '&') {
@@ -1122,7 +1124,7 @@ class activity_planner {
     private static function encode_availability(\stdClass $availability): string {
         $json = json_encode($availability);
         if ($json === false) {
-            throw new \moodle_exception('Impossible de générer la restriction.');
+            throw new \moodle_exception(get_string('cannotgeneraterestriction', 'local_exammanager'));
         }
         return $json;
     }

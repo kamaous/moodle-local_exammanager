@@ -28,7 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 class exporter {
 
     /**
-     * Neutralise les formules CSV/Excel et normalise les valeurs scalaires.
+     * Neutralises CSV/Excel formulas and normalises scalar values.
      */
     private static function sanitize_cell($value): string {
         if (is_bool($value)) {
@@ -64,7 +64,7 @@ class exporter {
     }
 
     /*
-    ORDRE DES COLONNES EXACT COMME TON IMAGE
+    EXACT COLUMN ORDER EXPECTED BY THE PLANNING TEMPLATE
     */
     private static function headers(): array {
         return [
@@ -89,13 +89,13 @@ class exporter {
     }
 
     /*
-    EXPORT CSV (avec UTF8 BOM pour Excel)
+    CSV EXPORT (with UTF-8 BOM for Excel)
     */
     public static function export_csv(array $rows, string $filepath): void {
 
         $f = fopen($filepath, 'w');
 
-        // UTF-8 BOM pour corriger les accents dans Excel
+        // UTF-8 BOM so accented characters display correctly in Excel.
         fprintf($f, chr(0xEF).chr(0xBB).chr(0xBF));
 
         fputcsv($f, self::headers(), ';');
@@ -126,7 +126,7 @@ class exporter {
     }
 
     /*
-    EXPORT EXCEL (.xlsx)
+    EXCEL EXPORT (.xlsx)
     */
     public static function export_excel(array $rows, string $filepath): void {
 
@@ -160,7 +160,7 @@ class exporter {
     }
 
     /*
-    EXPORT LOG
+    LOG EXPORT
     */
     public static function export_log(array $rows, string $filepath): void {
 
@@ -181,7 +181,7 @@ class exporter {
     }
 
     /*
-    CONSTRUCTION HTML POUR PDF
+    HTML CONSTRUCTION FOR PDF
     */
     private static function build_grouped_html(array $rows, string $groupkey, callable $labelfn, string $title): string {
 
@@ -210,14 +210,14 @@ class exporter {
 
             $html .= '<table border="1" cellpadding="4">
                 <tr>
-                    <th>Quiz</th>
-                    <th>Cours</th>
-                    <th>Session</th>
-                    <th>Ouverture</th>
-                    <th>Fermeture</th>
-                    <th>Durée</th>
-                    <th>Clé accès</th>
-                    <th>Code sortie SEB</th>
+                    <th>' . s(get_string('quiz', 'local_exammanager')) . '</th>
+                    <th>' . s(get_string('course', 'local_exammanager')) . '</th>
+                    <th>' . s(get_string('sessionlabel', 'local_exammanager')) . '</th>
+                    <th>' . s(get_string('open', 'local_exammanager')) . '</th>
+                    <th>' . s(get_string('close', 'local_exammanager')) . '</th>
+                    <th>' . s(get_string('duration', 'local_exammanager')) . '</th>
+                    <th>' . s(get_string('accesskeylabel', 'local_exammanager')) . '</th>
+                    <th>' . s(get_string('sebexitcode', 'local_exammanager')) . '</th>
                 </tr>';
 
             foreach ($items as $item) {
@@ -241,7 +241,7 @@ class exporter {
     }
 
     /*
-    GENERATION PDF
+    PDF GENERATION
     */
     private static function export_pdf_from_html(string $html, string $filepath): void {
 
@@ -264,7 +264,7 @@ class exporter {
     }
 
     /*
-    PDF PAR SALLE
+    PDF BY ROOM
     */
     public static function export_pdf_by_room(array $rows, string $filepath): void {
 
@@ -279,7 +279,7 @@ class exporter {
     }
 
     /*
-    PDF PAR SURVEILLANT
+    PDF BY SUPERVISOR
     */
     public static function export_pdf_by_teacher(array $rows, string $filepath): void {
 

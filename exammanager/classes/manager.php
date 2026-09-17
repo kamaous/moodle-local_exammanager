@@ -31,7 +31,7 @@ require_once($GLOBALS['CFG']->dirroot . '/course/lib.php');
 class manager {
 
     /**
-     * Rend visible automatiquement l'activité quiz/test programmée.
+     * Automatically makes the programmed quiz/test activity visible.
      */
     private static function reveal_quiz_activity(\stdClass $course, \stdClass $cm): void {
         global $DB;
@@ -68,7 +68,7 @@ class manager {
     }
 
     /**
-     * Rend visible automatiquement la section contenant le quiz programmé.
+     * Automatically makes the section containing the programmed quiz visible.
      */
     private static function reveal_quiz_section(\stdClass $course, \stdClass $cm): void {
         global $DB;
@@ -222,7 +222,7 @@ class manager {
             if ($course_shortname === '' || ($quiz_name === '' && $selectedquizid <= 0)) {
                 return [
                     'status' => 'ERROR',
-                    'message' => 'Course ou quiz vide',
+                    'message' => get_string('coursequizempty', 'local_exammanager'),
                     'access_code' => '',
                     'seb_exit_code' => ''
                 ];
@@ -238,7 +238,7 @@ class manager {
             if (!$course) {
                 return [
                     'status' => 'ERROR',
-                    'message' => 'Course not found: ' . $course_shortname,
+                    'message' => get_string('coursenotfoundwithname', 'local_exammanager', $course_shortname),
                     'access_code' => '',
                     'seb_exit_code' => ''
                 ];
@@ -261,7 +261,7 @@ class manager {
                 if (!$quiz) {
                     return [
                         'status' => 'ERROR',
-                        'message' => 'Quiz sélectionné introuvable pour ce cours',
+                        'message' => get_string('selectedquiznotfoundforcourse', 'local_exammanager'),
                         'access_code' => '',
                         'seb_exit_code' => ''
                     ];
@@ -283,7 +283,7 @@ class manager {
                 if (!$quizzes) {
                     return [
                         'status' => 'ERROR',
-                        'message' => 'Quiz not found: ' . $quiz_name,
+                        'message' => get_string('quiznotfoundwithname', 'local_exammanager', $quiz_name),
                         'access_code' => '',
                         'seb_exit_code' => ''
                     ];
@@ -413,13 +413,13 @@ class manager {
 
             $tx->allow_commit();
 
-            $message = 'Examen programmé avec succès';
+            $message = get_string('examprogrammedsuccess', 'local_exammanager');
             if ($accessaction === 'disable' && $sebaction === 'disable') {
-                $message .= ' (code d’accès supprimé et Safe Exam Browser désactivé)';
+                $message .= get_string('accesscoderemovedandsebdisabledsuffix', 'local_exammanager');
             } else if ($accessaction === 'disable') {
-                $message .= ' (code d’accès supprimé)';
+                $message .= get_string('accesscoderemovedsuffix', 'local_exammanager');
             } else if ($sebaction === 'disable') {
-                $message .= ' (Safe Exam Browser désactivé)';
+                $message .= get_string('sebdisabledsuffix', 'local_exammanager');
             }
 
             return [
@@ -435,7 +435,7 @@ class manager {
             debugging('ExamManager programming error: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return [
                 'status' => 'ERROR',
-                'message' => 'Erreur de programmation. Vérifiez les données de la ligne, le cours et le test sélectionné. Les détails techniques ont été journalisés côté serveur.',
+                'message' => get_string('programmingerrormsg', 'local_exammanager'),
                 'access_code' => '',
                 'seb_exit_code' => ''
             ];
