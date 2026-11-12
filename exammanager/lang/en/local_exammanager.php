@@ -367,3 +367,6 @@ $string['manualrow_deleted'] = 'The row has been deleted.';
 $string['manualrow_actions'] = 'Actions';
 $string['manualrow_fillhint'] = 'New row: enter the course, the dates and the duration, then refresh the preview to choose the quiz.';
 $string['manualrow_refreshhint'] = 'After entering or changing a course short name, click "Refresh preview" to load the list of its quizzes.';
+$string['manualrow_count'] = 'Number of rows';
+$string['manualrows_add'] = 'Add these rows';
+$string['manualrows_added'] = '{$a} new rows have been added.';

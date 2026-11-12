@@ -52,7 +52,7 @@ if ($removerowindex >= 0) {
 if (!isset($SESSION->$sharedcodeskey)) {
     $SESSION->$sharedcodeskey = 1;
 }
-if (in_array($action, ['preview', 'refreshrows', 'program', 'addrow', 'deleterow'], true) && confirm_sesskey()) {
+if (in_array($action, ['preview', 'refreshrows', 'program', 'addrow', 'addrows', 'deleterow'], true) && confirm_sesskey()) {
     $SESSION->$sharedcodeskey = optional_param('allow_shared_codes', 0, PARAM_BOOL) ? 1 : 0;
 }
 $allowsharedcodes = !empty($SESSION->$sharedcodeskey);
@@ -223,7 +223,20 @@ echo '<div class="local-exammanager-muted small">' . get_string('manualentry_hel
 echo '<form method="post" style="margin-top:8px;">';
 echo '<input type="hidden" name="sesskey" value="' . sesskey() . '">';
 echo '<input type="hidden" name="action" value="manualstart">';
+echo '<div class="local-exammanager-rowcount">';
+echo '<label for="exammanager-manual-rowcount">' . get_string('manualrow_count', 'local_exammanager') . '</label>';
+echo html_writer::empty_tag('input', [
+    'type' => 'number',
+    'id' => 'exammanager-manual-rowcount',
+    'name' => 'rowcount',
+    'value' => '1',
+    'min' => '1',
+    'max' => (string)\local_exammanager\util::MAX_MANUAL_ROWS,
+    'step' => '1',
+    'class' => 'form-control',
+]);
 echo '<button class="btn btn-outline-primary" type="submit">' . get_string('manualentry_start', 'local_exammanager') . '</button>';
+echo '</div>';
 echo '</form>';
 echo '</div>';
 
@@ -347,22 +360,35 @@ MANUAL ENTRY: START / ADD ROW / DELETE ROW
 if ($action === 'manualstart' && confirm_sesskey()) {
     // New manual planning: same as uploading a new file, the previous operation is closed.
     $reset_exports();
-    $rows = [$blank_row()];
+    $rows = [];
+    $newcount = \local_exammanager\util::get_manual_row_count();
+    for ($i = 0; $i < $newcount; $i++) {
+        $rows[] = $blank_row();
+    }
     $SESSION->$sessionkey = $rows;
     $SESSION->$lockkey = 0;
     echo $OUTPUT->notification(get_string('manualentry_started', 'local_exammanager'), 'notifysuccess');
 }
 
-if ($action === 'addrow' && confirm_sesskey()) {
+if (in_array($action, ['addrow', 'addrows'], true) && confirm_sesskey()) {
     if (!empty($SESSION->$lockkey)) {
         echo $OUTPUT->notification(get_string('alreadylockedmsg', 'local_exammanager'), 'notifywarning');
     } else {
         $rows = (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey))
             ? $sync_posted_rows($SESSION->$sessionkey)
             : [];
-        $rows[] = $blank_row();
+        // "Add a row" adds one row; "Add rows" adds the number typed next to it.
+        $newcount = ($action === 'addrows') ? \local_exammanager\util::get_manual_row_count() : 1;
+        for ($i = 0; $i < $newcount; $i++) {
+            $rows[] = $blank_row();
+        }
         $SESSION->$sessionkey = $rows;
-        echo $OUTPUT->notification(get_string('manualrow_added', 'local_exammanager'), 'notifysuccess');
+        echo $OUTPUT->notification(
+            $newcount > 1
+                ? get_string('manualrows_added', 'local_exammanager', $newcount)
+                : get_string('manualrow_added', 'local_exammanager'),
+            'notifysuccess'
+        );
     }
 }
 
@@ -741,6 +767,19 @@ if (!empty($rows)) {
 
         echo '<div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">';
         echo '<button class="btn btn-outline-primary" type="submit" name="action" value="addrow">' . get_string('manualrow_add', 'local_exammanager') . '</button>';
+        echo '<span class="local-exammanager-rowcount">';
+        echo html_writer::empty_tag('input', [
+            'type' => 'number',
+            'name' => 'rowcount',
+            'value' => '5',
+            'min' => '1',
+            'max' => (string)\local_exammanager\util::MAX_MANUAL_ROWS,
+            'step' => '1',
+            'class' => 'form-control',
+            'aria-label' => get_string('manualrow_count', 'local_exammanager'),
+        ]);
+        echo '<button class="btn btn-outline-primary" type="submit" name="action" value="addrows">' . get_string('manualrows_add', 'local_exammanager') . '</button>';
+        echo '</span>';
         echo '<button class="btn btn-outline-secondary" type="submit" name="action" value="refreshrows">' . get_string('refreshpreview', 'local_exammanager') . '</button>';
         echo '<button class="btn btn-success" type="submit" name="action" value="program" id="exammanager-program-btn" ' . ($isprogrammode ? '' : 'disabled') . '>' . get_string('programexams', 'local_exammanager') . '</button>';
         echo '</div>';

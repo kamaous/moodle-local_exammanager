@@ -345,3 +345,5 @@
 .local-exammanager-manualentry h4 { margin:0 0 4px; font-size:1.05rem; }
 .local-exammanager-preview-table .col-rowactions,
 .local-exammanager-bulk-table td:last-child { white-space:nowrap; }
+.local-exammanager-rowcount { display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.local-exammanager-rowcount input[type="number"] { width:90px; }

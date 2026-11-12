@@ -29,6 +29,20 @@ defined('MOODLE_INTERNAL') || die();
 
 class util {
 
+    /** Maximum number of empty rows that can be added at once in manual entry. */
+    const MAX_MANUAL_ROWS = 50;
+
+    /**
+     * Reads the number of manual rows to add from the request, limited to 1..MAX_MANUAL_ROWS.
+     *
+     * @param string $param Request parameter name.
+     * @return int
+     */
+    public static function get_manual_row_count(string $param = 'rowcount'): int {
+        $count = optional_param($param, 1, PARAM_INT);
+        return max(1, min(self::MAX_MANUAL_ROWS, (int)$count));
+    }
+
     /**
      * Generates a unique code (5 digits).
      */

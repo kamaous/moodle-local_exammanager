@@ -367,3 +367,6 @@ $string['manualrow_deleted'] = 'La ligne a été supprimée.';
 $string['manualrow_actions'] = 'Actions';
 $string['manualrow_fillhint'] = 'Nouvelle ligne : saisissez le cours, les dates et la durée, puis actualisez la prévisualisation pour choisir le quiz.';
 $string['manualrow_refreshhint'] = 'Après avoir saisi ou modifié le nom abrégé d\'un cours, cliquez sur « Actualiser la prévisualisation » pour charger la liste de ses quiz.';
+$string['manualrow_count'] = 'Nombre de lignes';
+$string['manualrows_add'] = 'Ajouter ces lignes';
+$string['manualrows_added'] = '{$a} nouvelles lignes ont été ajoutées.';
