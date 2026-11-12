@@ -40,6 +40,11 @@ global $SESSION, $USER;
 
 $shortname = trim(optional_param('shortname', '', PARAM_TEXT));
 $action = optional_param('action', '', PARAM_ALPHA);
+// A per-row "Delete" button of the bulk preview posts the index of the row to remove.
+$removebulkrow = optional_param('removebulkrow', -1, PARAM_INT);
+if ($removebulkrow >= 0) {
+    $action = 'bulkdeleterow';
+}
 $sessionkey = 'local_exammanager_activity_import_' . $USER->id;
 $course = null;
 $applymessage = '';
@@ -180,6 +185,42 @@ if ($action === 'bulkpreview' && confirm_sesskey()) {
         $SESSION->$sessionkey = $bulkrows;
         $applymessage = get_string('operationsappliedmsg', 'local_exammanager', $applied);
         $applymessagetype = $applied > 0 ? 'notifysuccess' : 'notifyproblem';
+    }
+} else if ($action === 'bulkmanualstart' && confirm_sesskey()) {
+    // Manual entry without file: start a new preview with one empty row.
+    $bulkrows = \local_exammanager\activity_planner::add_blank_import_row([], [], $shortname);
+    $SESSION->$sessionkey = $bulkrows;
+    $applymessage = get_string('manualentry_started', 'local_exammanager');
+    $applymessagetype = 'notifysuccess';
+} else if ($action === 'bulkaddrow' && confirm_sesskey()) {
+    $previous = (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) ? $SESSION->$sessionkey : [];
+    $postedrows = $_POST['rowedit'] ?? [];
+    if (!is_array($postedrows)) {
+        $postedrows = [];
+    }
+
+    $bulkrows = \local_exammanager\activity_planner::add_blank_import_row($previous, $postedrows, $shortname);
+    $SESSION->$sessionkey = $bulkrows;
+    $applymessage = get_string('manualrow_added', 'local_exammanager');
+    $applymessagetype = 'notifysuccess';
+} else if ($action === 'bulkdeleterow' && confirm_sesskey()) {
+    if (empty($SESSION->$sessionkey) || !is_array($SESSION->$sessionkey)) {
+        $applymessage = get_string('nopreviewtorefresh', 'local_exammanager');
+        $applymessagetype = 'notifyproblem';
+    } else {
+        $postedrows = $_POST['rowedit'] ?? [];
+        if (!is_array($postedrows)) {
+            $postedrows = [];
+        }
+
+        $bulkrows = \local_exammanager\activity_planner::remove_import_row($SESSION->$sessionkey, $postedrows, $removebulkrow, $shortname);
+        if (empty($bulkrows)) {
+            unset($SESSION->$sessionkey);
+        } else {
+            $SESSION->$sessionkey = $bulkrows;
+        }
+        $applymessage = get_string('manualrow_deleted', 'local_exammanager');
+        $applymessagetype = 'notifysuccess';
     }
 } else if (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) {
     $bulkrows = $SESSION->$sessionkey;
@@ -589,6 +630,17 @@ echo '</div>';
 echo '<br>';
 echo '<button class="btn btn-primary" type="submit">' . get_string('previewfile', 'local_exammanager') . '</button>';
 echo '</form>';
+
+echo '<div class="local-exammanager-manualentry">';
+echo '<h4>' . get_string('manualentry_title', 'local_exammanager') . '</h4>';
+echo '<div class="local-exammanager-muted small">' . get_string('manualentry_activities_help', 'local_exammanager') . '</div>';
+echo '<form method="post" style="margin-top:8px;">';
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'action', 'value' => 'bulkmanualstart']);
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'shortname', 'value' => $shortname]);
+echo '<button class="btn btn-outline-primary" type="submit">' . get_string('manualentry_start', 'local_exammanager') . '</button>';
+echo '</form>';
+echo '</div>';
 echo '</div>';
 
 if (!empty($bulkrows)) {
@@ -609,6 +661,9 @@ if (!empty($bulkrows)) {
     echo '<form method="post">';
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'shortname', 'value' => $shortname]);
+    // Default button for implicit submission (Enter key): refresh, never a row deletion.
+    echo '<button type="submit" name="action" value="bulkrefresh" tabindex="-1" aria-hidden="true"'
+        . ' style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;"></button>';
     echo '<div class="local-exammanager-preview-wrap">';
     echo '<table class="generaltable local-exammanager-bulk-table">';
     echo '<thead><tr>';
@@ -622,6 +677,7 @@ if (!empty($bulkrows)) {
         get_string('bulkcol_resolved', 'local_exammanager'),
         get_string('status', 'local_exammanager'),
         get_string('message', 'local_exammanager'),
+        get_string('manualrow_actions', 'local_exammanager'),
     ];
     foreach ($bulktableheadings as $heading) {
         echo html_writer::tag('th', s($heading));
@@ -649,6 +705,13 @@ if (!empty($bulkrows)) {
         echo html_writer::tag('td', s((string)($bulkrow['target_label'] ?? '')) . '<br>' . s((string)($bulkrow['restriction_label'] ?? '')));
         echo html_writer::tag('td', html_writer::span($status, 'local-exammanager-badge ' . $statusclass));
         echo html_writer::tag('td', s((string)($bulkrow['message'] ?? '')));
+        echo html_writer::tag('td', html_writer::tag('button', get_string('manualrow_delete', 'local_exammanager'), [
+            'type' => 'submit',
+            'name' => 'removebulkrow',
+            'value' => (string)$idx,
+            'class' => 'btn btn-sm btn-outline-danger',
+            'formnovalidate' => 'formnovalidate',
+        ]));
         echo '</tr>';
     }
 
@@ -656,6 +719,7 @@ if (!empty($bulkrows)) {
     echo '</div>';
 
     echo '<div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">';
+    echo '<button class="btn btn-outline-primary" type="submit" name="action" value="bulkaddrow">' . get_string('manualrow_add', 'local_exammanager') . '</button>';
     echo '<button class="btn btn-outline-secondary" type="submit" name="action" value="bulkrefresh">' . get_string('refreshpreview', 'local_exammanager') . '</button>';
     echo '<button class="btn btn-success" type="submit" name="action" value="bulkapply" ' . ($readycount > 0 ? '' : 'disabled') . '>' . get_string('applyallreadyrows', 'local_exammanager') . '</button>';
     echo '</div>';

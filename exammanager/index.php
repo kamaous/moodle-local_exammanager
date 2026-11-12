@@ -42,11 +42,17 @@ $sharedcodeskey = 'local_exammanager_sharedcodes_' . $userid;
 $lockkey = 'local_exammanager_locked_' . $userid;
 $action = optional_param('action', '', PARAM_ALPHA);
 
+// A per-row "Delete" button posts the index of the row to remove.
+$removerowindex = optional_param('removerow', -1, PARAM_INT);
+if ($removerowindex >= 0) {
+    $action = 'deleterow';
+}
+
 // "Allow shared codes" option: remembered in session, enabled by default.
 if (!isset($SESSION->$sharedcodeskey)) {
     $SESSION->$sharedcodeskey = 1;
 }
-if (in_array($action, ['preview', 'refreshrows', 'program'], true) && confirm_sesskey()) {
+if (in_array($action, ['preview', 'refreshrows', 'program', 'addrow', 'deleterow'], true) && confirm_sesskey()) {
     $SESSION->$sharedcodeskey = optional_param('allow_shared_codes', 0, PARAM_BOOL) ? 1 : 0;
 }
 $allowsharedcodes = !empty($SESSION->$sharedcodeskey);
@@ -93,6 +99,83 @@ $apply_row_overrides = function(array $rows, array $postedrows): array {
     return $rows;
 };
 
+/**
+ * Builds an empty planning row for manual entry (no file upload needed).
+ */
+$blank_row = function(): array {
+    return [
+        'course_shortname' => '',
+        'quiz_name' => '',
+        'open_time' => '',
+        'close_time' => '',
+        'time_limit' => '',
+        'access_code_action' => 'generate',
+        'seb_action' => 'generate',
+        'access_code' => '',
+        'seb_exit_code' => '',
+        'status' => 'ERROR',
+        'message' => get_string('manualrow_fillhint', 'local_exammanager'),
+    ];
+};
+
+/**
+ * Applies the values posted from the preview table (edited fields and selected quizzes)
+ * to the session rows, then re-validates them and reassigns the generated codes.
+ */
+$sync_posted_rows = function(array $rows) use ($apply_row_overrides, $allowsharedcodes): array {
+    global $DB;
+
+    $editedrows = $_POST['rowedit'] ?? [];
+    if (!is_array($editedrows)) {
+        $editedrows = [];
+    }
+    $rows = $apply_row_overrides($rows, $editedrows);
+
+    $selectedquizids = $_POST['selected_quizid'] ?? [];
+    if (!is_array($selectedquizids)) {
+        $selectedquizids = [];
+    }
+    foreach ($rows as $idx => &$row) {
+        if (in_array(($row['status'] ?? ''), ['PROGRAMMÉ', 'PROGRAMMED'], true)) {
+            continue;
+        }
+
+        if (isset($selectedquizids[$idx]) && (int)$selectedquizids[$idx] > 0) {
+            $row['selected_quizid'] = (int)$selectedquizids[$idx];
+            $selectedquiz = $DB->get_record('quiz', ['id' => (int)$selectedquizids[$idx]], 'id, name', IGNORE_MISSING);
+            if ($selectedquiz) {
+                $row['quiz_name'] = $selectedquiz->name;
+            }
+        } else {
+            unset($row['selected_quizid']);
+        }
+
+        list($valid, $msg) = \local_exammanager\util::validate_row($row);
+        if (!$valid) {
+            $row['status'] = 'ERROR';
+            $row['message'] = $msg;
+        } else {
+            $row['status'] = 'READY';
+            $row['message'] = get_string('previewrefreshedmsg', 'local_exammanager');
+        }
+    }
+    unset($row);
+
+    return \local_exammanager\util::assign_shared_generated_codes($rows, true, $allowsharedcodes);
+};
+
+/**
+ * Removes the export files of the previous operation.
+ */
+$reset_exports = function() use ($USER): void {
+    $base = make_temp_directory('local_exammanager/' . $USER->id);
+    foreach (['examens.csv', 'examens.xlsx', 'execution.txt'] as $f) {
+        if (file_exists($base . '/' . $f)) {
+            unlink($base . '/' . $f);
+        }
+    }
+};
+
 echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
 echo \local_exammanager\output\navbar::render('programming');
@@ -130,6 +213,19 @@ echo '</div>';
 echo '<br>';
 echo '<button class="btn btn-primary">' . get_string('previewplanning', 'local_exammanager') . '</button>';
 echo '</form>';
+
+/* ========================
+MANUAL ENTRY (no file)
+======================== */
+echo '<div class="local-exammanager-manualentry">';
+echo '<h4>' . get_string('manualentry_title', 'local_exammanager') . '</h4>';
+echo '<div class="local-exammanager-muted small">' . get_string('manualentry_help', 'local_exammanager') . '</div>';
+echo '<form method="post" style="margin-top:8px;">';
+echo '<input type="hidden" name="sesskey" value="' . sesskey() . '">';
+echo '<input type="hidden" name="action" value="manualstart">';
+echo '<button class="btn btn-outline-primary" type="submit">' . get_string('manualentry_start', 'local_exammanager') . '</button>';
+echo '</form>';
+echo '</div>';
 
 
 /* ========================
@@ -239,42 +335,55 @@ if ($action === 'refreshrows' && confirm_sesskey()) {
     if (!empty($SESSION->$lockkey)) {
         echo $OUTPUT->notification(get_string('alreadylockedmsg', 'local_exammanager'), 'notifywarning');
     } else if (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) {
-        $rows = $SESSION->$sessionkey;
-        $editedrows = $_POST['rowedit'] ?? [];
-        if (!is_array($editedrows)) {
-            $editedrows = [];
-        }
-        $rows = $apply_row_overrides($rows, $editedrows);
-
-        $selectedquizids = $_POST['selected_quizid'] ?? [];
-        if (!is_array($selectedquizids)) {
-            $selectedquizids = [];
-        }
-        foreach ($rows as $idx => &$row) {
-            if (isset($selectedquizids[$idx]) && (int)$selectedquizids[$idx] > 0) {
-                $row['selected_quizid'] = (int)$selectedquizids[$idx];
-                $selectedquiz = $DB->get_record('quiz', ['id' => (int)$selectedquizids[$idx]], 'id, name', IGNORE_MISSING);
-                if ($selectedquiz) {
-                    $row['quiz_name'] = $selectedquiz->name;
-                }
-            } else {
-                unset($row['selected_quizid']);
-            }
-
-            list($valid, $msg) = \local_exammanager\util::validate_row($row);
-            if (!$valid) {
-                $row['status'] = 'ERROR';
-                $row['message'] = $msg;
-            } else if (($row['status'] ?? '') !== 'PROGRAMMÉ') {
-                $row['status'] = 'READY';
-                $row['message'] = get_string('previewrefreshedmsg', 'local_exammanager');
-            }
-        }
-        unset($row);
-
-        $rows = \local_exammanager\util::assign_shared_generated_codes($rows, true, $allowsharedcodes);
+        $rows = $sync_posted_rows($SESSION->$sessionkey);
         $SESSION->$sessionkey = $rows;
         echo $OUTPUT->notification(get_string('previewupdatedmsg', 'local_exammanager'), 'notifysuccess');
+    }
+}
+
+/* ========================
+MANUAL ENTRY: START / ADD ROW / DELETE ROW
+======================== */
+if ($action === 'manualstart' && confirm_sesskey()) {
+    // New manual planning: same as uploading a new file, the previous operation is closed.
+    $reset_exports();
+    $rows = [$blank_row()];
+    $SESSION->$sessionkey = $rows;
+    $SESSION->$lockkey = 0;
+    echo $OUTPUT->notification(get_string('manualentry_started', 'local_exammanager'), 'notifysuccess');
+}
+
+if ($action === 'addrow' && confirm_sesskey()) {
+    if (!empty($SESSION->$lockkey)) {
+        echo $OUTPUT->notification(get_string('alreadylockedmsg', 'local_exammanager'), 'notifywarning');
+    } else {
+        $rows = (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey))
+            ? $sync_posted_rows($SESSION->$sessionkey)
+            : [];
+        $rows[] = $blank_row();
+        $SESSION->$sessionkey = $rows;
+        echo $OUTPUT->notification(get_string('manualrow_added', 'local_exammanager'), 'notifysuccess');
+    }
+}
+
+if ($action === 'deleterow' && confirm_sesskey()) {
+    if (!empty($SESSION->$lockkey)) {
+        echo $OUTPUT->notification(get_string('alreadylockedmsg', 'local_exammanager'), 'notifywarning');
+    } else if (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) {
+        // Keep the edits made on the other rows before removing the selected one.
+        $rows = $sync_posted_rows($SESSION->$sessionkey);
+        $target = $rows[$removerowindex] ?? null;
+        if ($target !== null && !in_array(($target['status'] ?? ''), ['PROGRAMMÉ', 'PROGRAMMED'], true)) {
+            unset($rows[$removerowindex]);
+            $rows = array_values($rows);
+            // Codes are shared per course + date: recompute them without the removed row.
+            $rows = \local_exammanager\util::assign_shared_generated_codes($rows, true, $allowsharedcodes);
+            echo $OUTPUT->notification(get_string('manualrow_deleted', 'local_exammanager'), 'notifysuccess');
+        }
+        $SESSION->$sessionkey = $rows;
+        if (empty($rows)) {
+            unset($SESSION->$sessionkey);
+        }
     }
 }
 
@@ -403,6 +512,11 @@ if (!empty($rows)) {
 
     echo '<form method="post" id="exammanager-preview-form">';
     echo '<input type="hidden" name="sesskey" value="' . sesskey() . '">';
+    if (!$islocked) {
+        // Default button for implicit submission (Enter key): refresh, never a row deletion.
+        echo '<button type="submit" name="action" value="refreshrows" tabindex="-1" aria-hidden="true"'
+            . ' style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;"></button>';
+    }
 
     echo '<div class="local-exammanager-preview-wrap">';
     echo '<table class="generaltable local-exammanager-preview-table">';
@@ -420,6 +534,9 @@ if (!empty($rows)) {
         [get_string('sebexitcode', 'local_exammanager'), 'col-sebcode'],
         [get_string('message', 'local_exammanager'), 'col-message'],
     ];
+    if (!$islocked) {
+        $previewheadings[] = [get_string('manualrow_actions', 'local_exammanager'), 'col-rowactions'];
+    }
     foreach ($previewheadings as [$heading, $class]) {
         echo html_writer::tag('th', s($heading), ['class' => $class]);
     }
@@ -461,6 +578,9 @@ if (!empty($rows)) {
             echo html_writer::tag('td', s($r['access_code'] ?? ''), ['class' => 'col-accesscode']);
             echo html_writer::tag('td', s($r['seb_exit_code'] ?? ''), ['class' => 'col-sebcode']);
             echo html_writer::tag('td', '<strong>' . s($prestatus) . '</strong> ' . s($premessage), ['class' => 'col-message']);
+            if (!$islocked) {
+                echo html_writer::tag('td', '', ['class' => 'col-rowactions']);
+            }
             echo '</tr>';
             continue;
         }
@@ -595,6 +715,14 @@ if (!empty($rows)) {
         echo html_writer::tag('td', s($r['access_code'] ?? ''), ['class' => 'col-accesscode']);
         echo html_writer::tag('td', s($r['seb_exit_code'] ?? ''), ['class' => 'col-sebcode']);
         echo html_writer::tag('td', '<span class="exammanager-status-text" style="display:none;">' . s($prestatus) . '</span><span class="exammanager-message-text">' . s($premessage) . '</span><div class="exammanager-inline-errors text-danger small" style="margin-top:4px;"></div>', ['class' => 'col-message']);
+        $deletebutton = html_writer::tag('button', get_string('manualrow_delete', 'local_exammanager'), [
+            'type' => 'submit',
+            'name' => 'removerow',
+            'value' => (string)$idx,
+            'class' => 'btn btn-sm btn-outline-danger',
+            'formnovalidate' => 'formnovalidate',
+        ]);
+        echo html_writer::tag('td', $deletebutton, ['class' => 'col-rowactions']);
         echo '</tr>';
     }
 
@@ -612,9 +740,11 @@ if (!empty($rows)) {
         echo '</div>';
 
         echo '<div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap;">';
+        echo '<button class="btn btn-outline-primary" type="submit" name="action" value="addrow">' . get_string('manualrow_add', 'local_exammanager') . '</button>';
         echo '<button class="btn btn-outline-secondary" type="submit" name="action" value="refreshrows">' . get_string('refreshpreview', 'local_exammanager') . '</button>';
         echo '<button class="btn btn-success" type="submit" name="action" value="program" id="exammanager-program-btn" ' . ($isprogrammode ? '' : 'disabled') . '>' . get_string('programexams', 'local_exammanager') . '</button>';
         echo '</div>';
+        echo '<div class="local-exammanager-muted small" style="margin-top:8px;">' . get_string('manualrow_refreshhint', 'local_exammanager') . '</div>';
 
         $PAGE->requires->js_call_amd('local_exammanager/preview_validation', 'init');
     }

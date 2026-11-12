@@ -353,3 +353,17 @@ $string['historystatusrunning'] = 'En cours';
 $string['historystatusfinished'] = 'Terminé';
 $string['historystatushidden'] = 'Programmé mais caché';
 $string['historystatuserror'] = 'Anomalie';
+
+// Manual entry (add a row without uploading a file).
+$string['manualentry_title'] = 'Saisie manuelle (sans fichier)';
+$string['manualentry_help'] = 'Pour programmer un seul ou quelques examens sans préparer de fichier, démarrez une saisie manuelle puis utilisez le bouton « Ajouter une ligne » pour ajouter d\'autres examens. Démarrer une saisie manuelle remplace la prévisualisation en cours.';
+$string['manualentry_activities_help'] = 'Pour programmer une seule ou quelques restrictions sans préparer de fichier, démarrez une saisie manuelle puis utilisez le bouton « Ajouter une ligne » pour ajouter d\'autres lignes. Démarrer une saisie manuelle remplace la prévisualisation en cours.';
+$string['manualentry_start'] = 'Démarrer une saisie manuelle';
+$string['manualentry_started'] = 'Saisie manuelle démarrée : renseignez la ligne puis actualisez la prévisualisation.';
+$string['manualrow_add'] = 'Ajouter une ligne';
+$string['manualrow_added'] = 'Une nouvelle ligne a été ajoutée.';
+$string['manualrow_delete'] = 'Supprimer';
+$string['manualrow_deleted'] = 'La ligne a été supprimée.';
+$string['manualrow_actions'] = 'Actions';
+$string['manualrow_fillhint'] = 'Nouvelle ligne : saisissez le cours, les dates et la durée, puis actualisez la prévisualisation pour choisir le quiz.';
+$string['manualrow_refreshhint'] = 'Après avoir saisi ou modifié le nom abrégé d\'un cours, cliquez sur « Actualiser la prévisualisation » pour charger la liste de ses quiz.';
