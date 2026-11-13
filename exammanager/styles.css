@@ -339,3 +339,11 @@
         grid-template-columns:1fr;
     }
 }
+.local-exammanager-manualentry {
+    margin-top:18px; padding-top:14px; border-top:1px solid #e5e7eb;
+}
+.local-exammanager-manualentry h4 { margin:0 0 4px; font-size:1.05rem; }
+.local-exammanager-preview-table .col-rowactions,
+.local-exammanager-bulk-table td:last-child { white-space:nowrap; }
+.local-exammanager-rowcount { display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.local-exammanager-rowcount input[type="number"] { width:90px; }

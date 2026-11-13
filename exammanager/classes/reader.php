@@ -142,7 +142,7 @@ class reader {
 
             } catch (\Throwable $e) {
                 debugging('ExamManager Excel read error: ' . $e->getMessage(), DEBUG_DEVELOPER);
-                throw new moodle_exception(get_string('excelreaderror', 'local_exammanager'));
+                throw new \moodle_exception(get_string('excelreaderror', 'local_exammanager'));
             }
         }
 

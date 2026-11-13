@@ -432,6 +432,43 @@ class activity_planner {
         return $preview;
     }
 
+    /**
+     * Appends one or several empty rows (manual entry, without file upload) to the bulk preview.
+     * The edits posted for the existing rows are kept.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param string $defaultshortname Course shortname used to prefill the new rows.
+     * @param int $count Number of empty rows to add.
+     * @return array
+     */
+    public static function add_blank_import_row(array $previewrows, array $postedrows, string $defaultshortname = '',
+            int $count = 1): array {
+        $preview = empty($previewrows) ? [] : self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        for ($i = 0; $i < max(1, $count); $i++) {
+            $rownum = count($preview) + 2;
+            $preview[] = self::preview_import_row([], $rownum, $defaultshortname);
+        }
+
+        return $preview;
+    }
+
+    /**
+     * Removes one row from the bulk preview, keeping the edits posted for the other rows.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param int $index Index of the row to remove.
+     * @param string $defaultshortname Default course shortname.
+     * @return array
+     */
+    public static function remove_import_row(array $previewrows, array $postedrows, int $index, string $defaultshortname = ''): array {
+        $preview = self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        unset($preview[$index]);
+
+        return array_values($preview);
+    }
+
     public static function apply_import_preview_row(array $row): array {
         $status = (string)($row['status'] ?? '');
         if ($status !== 'READY') {
