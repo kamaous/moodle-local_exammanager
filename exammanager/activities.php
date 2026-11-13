@@ -259,7 +259,7 @@ $renderbulkselect = function(int $idx, string $field, array $source, array $opti
     );
 };
 
-$renderbulkmanualselect = function(int $idx, string $field, array $source, array $options, array $attrs = [], string $selected = null): string {
+$renderbulkmanualselect = function(int $idx, string $field, array $source, array $options, array $attrs = [], ?string $selected = null): string {
     $selected = $selected === null ? (string)($source[$field] ?? '') : $selected;
     $attrs = array_merge([
         'name' => 'rowedit[' . $idx . '][' . $field . ']',
