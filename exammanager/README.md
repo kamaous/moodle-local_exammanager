@@ -27,6 +27,10 @@ validation before anything is written to the database.
 - **Manual entry without a file**: start a manual entry and use the
   "Add a row" button to program a single exam (or a few) directly in the
   table; any row that is not yet programmed can be deleted.
+- **Row selection and bulk operations**: tick rows (or select all) to give
+  them the same opening/closing dates, duration, access-code action or SEB
+  action in one go, or to duplicate or delete them; each row can also be
+  duplicated on its own.
 - Editable preview: correct the course, quiz, dates and duration directly
   in the table, with live client-side validation before submission.
 - Quiz picker limited to the active quizzes of the matched course (deleted/
@@ -58,7 +62,9 @@ validation before anything is written to the database.
 - **Activity planner**: bulk availability-restriction planning for other
   course activities and sections (by date, grade, user profile field, or a
   combined restriction set), including a CSV/XLSX bulk-upload mode and a
-  manual entry mode ("Add a row" / "Delete") that needs no file.
+  manual entry mode ("Add a row" / "Delete") that needs no file, with row
+  duplication and operations on the selected rows (same date, display,
+  duplicate, delete).
 - **Calendar**: an interactive FullCalendar view of every scheduled exam,
   with room and supervisor conflict detection.
 - **History**: a filterable, paginated history of every scheduled exam

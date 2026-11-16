@@ -48,11 +48,21 @@ if ($removerowindex >= 0) {
     $action = 'deleterow';
 }
 
+// A per-row "Duplicate" button posts the index of the row to copy.
+$duplicaterowindex = optional_param('duplicaterow', -1, PARAM_INT);
+if ($duplicaterowindex >= 0) {
+    $action = 'duplicaterow';
+}
+
+// Actions posted from the preview table (they carry the "allow shared codes" checkbox).
+$tableactions = ['preview', 'refreshrows', 'program', 'addrow', 'addrows', 'deleterow', 'duplicaterow',
+    'selapply', 'selduplicate', 'seldelete'];
+
 // "Allow shared codes" option: remembered in session, enabled by default.
 if (!isset($SESSION->$sharedcodeskey)) {
     $SESSION->$sharedcodeskey = 1;
 }
-if (in_array($action, ['preview', 'refreshrows', 'program', 'addrow', 'addrows', 'deleterow'], true) && confirm_sesskey()) {
+if (in_array($action, $tableactions, true) && confirm_sesskey()) {
     $SESSION->$sharedcodeskey = optional_param('allow_shared_codes', 0, PARAM_BOOL) ? 1 : 0;
 }
 $allowsharedcodes = !empty($SESSION->$sharedcodeskey);
@@ -119,35 +129,19 @@ $blank_row = function(): array {
 };
 
 /**
- * Applies the values posted from the preview table (edited fields and selected quizzes)
- * to the session rows, then re-validates them and reassigns the generated codes.
+ * Tells whether a row has already been programmed (read-only).
  */
-$sync_posted_rows = function(array $rows) use ($apply_row_overrides, $allowsharedcodes): array {
-    global $DB;
+$is_programmed = function(array $row): bool {
+    return in_array(($row['status'] ?? ''), ['PROGRAMMÉ', 'PROGRAMMED'], true);
+};
 
-    $editedrows = $_POST['rowedit'] ?? [];
-    if (!is_array($editedrows)) {
-        $editedrows = [];
-    }
-    $rows = $apply_row_overrides($rows, $editedrows);
-
-    $selectedquizids = $_POST['selected_quizid'] ?? [];
-    if (!is_array($selectedquizids)) {
-        $selectedquizids = [];
-    }
-    foreach ($rows as $idx => &$row) {
-        if (in_array(($row['status'] ?? ''), ['PROGRAMMÉ', 'PROGRAMMED'], true)) {
+/**
+ * Re-validates the rows that are not programmed yet and reassigns the generated codes.
+ */
+$revalidate_rows = function(array $rows) use ($allowsharedcodes, $is_programmed): array {
+    foreach ($rows as &$row) {
+        if ($is_programmed($row)) {
             continue;
-        }
-
-        if (isset($selectedquizids[$idx]) && (int)$selectedquizids[$idx] > 0) {
-            $row['selected_quizid'] = (int)$selectedquizids[$idx];
-            $selectedquiz = $DB->get_record('quiz', ['id' => (int)$selectedquizids[$idx]], 'id, name', IGNORE_MISSING);
-            if ($selectedquiz) {
-                $row['quiz_name'] = $selectedquiz->name;
-            }
-        } else {
-            unset($row['selected_quizid']);
         }
 
         list($valid, $msg) = \local_exammanager\util::validate_row($row);
@@ -162,6 +156,71 @@ $sync_posted_rows = function(array $rows) use ($apply_row_overrides, $allowshare
     unset($row);
 
     return \local_exammanager\util::assign_shared_generated_codes($rows, true, $allowsharedcodes);
+};
+
+/**
+ * Returns the indexes of the rows ticked in the preview table (programmed rows excluded).
+ */
+$get_selected_indexes = function(array $rows) use ($is_programmed): array {
+    $selected = optional_param_array('selectedrows', [], PARAM_INT);
+    $indexes = [];
+    foreach ($selected as $idx) {
+        $idx = (int)$idx;
+        if (isset($rows[$idx]) && !$is_programmed($rows[$idx])) {
+            $indexes[$idx] = $idx;
+        }
+    }
+    ksort($indexes);
+
+    return array_values($indexes);
+};
+
+/**
+ * Builds a copy of a row, ready to be edited (status and generated codes are recomputed).
+ */
+$copy_row = function(array $row): array {
+    unset($row['status'], $row['message']);
+    $row['access_code'] = '';
+    $row['seb_exit_code'] = '';
+
+    return $row;
+};
+
+/**
+ * Applies the values posted from the preview table (edited fields and selected quizzes)
+ * to the session rows, then re-validates them and reassigns the generated codes.
+ */
+$sync_posted_rows = function(array $rows) use ($apply_row_overrides, $revalidate_rows, $is_programmed): array {
+    global $DB;
+
+    $editedrows = $_POST['rowedit'] ?? [];
+    if (!is_array($editedrows)) {
+        $editedrows = [];
+    }
+    $rows = $apply_row_overrides($rows, $editedrows);
+
+    $selectedquizids = $_POST['selected_quizid'] ?? [];
+    if (!is_array($selectedquizids)) {
+        $selectedquizids = [];
+    }
+    foreach ($rows as $idx => &$row) {
+        if ($is_programmed($row)) {
+            continue;
+        }
+
+        if (isset($selectedquizids[$idx]) && (int)$selectedquizids[$idx] > 0) {
+            $row['selected_quizid'] = (int)$selectedquizids[$idx];
+            $selectedquiz = $DB->get_record('quiz', ['id' => (int)$selectedquizids[$idx]], 'id, name', IGNORE_MISSING);
+            if ($selectedquiz) {
+                $row['quiz_name'] = $selectedquiz->name;
+            }
+        } else {
+            unset($row['selected_quizid']);
+        }
+    }
+    unset($row);
+
+    return $revalidate_rows($rows);
 };
 
 /**
@@ -414,6 +473,91 @@ if ($action === 'deleterow' && confirm_sesskey()) {
 }
 
 /* ========================
+DUPLICATE ONE ROW / OPERATIONS ON THE SELECTED ROWS
+======================== */
+if (in_array($action, ['duplicaterow', 'selapply', 'selduplicate', 'seldelete'], true) && confirm_sesskey()) {
+    if (!empty($SESSION->$lockkey)) {
+        echo $OUTPUT->notification(get_string('alreadylockedmsg', 'local_exammanager'), 'notifywarning');
+    } else if (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) {
+        // Keep the edits made in the table before running the operation.
+        $rows = $sync_posted_rows($SESSION->$sessionkey);
+        $message = '';
+        $messagetype = 'notifysuccess';
+
+        if ($action === 'duplicaterow') {
+            if (isset($rows[$duplicaterowindex])) {
+                array_splice($rows, $duplicaterowindex + 1, 0, [$copy_row($rows[$duplicaterowindex])]);
+                $message = get_string('rowduplicated', 'local_exammanager');
+            }
+        } else {
+            $indexes = $get_selected_indexes($rows);
+
+            if (empty($indexes)) {
+                $message = get_string('bulk_noselection', 'local_exammanager');
+                $messagetype = 'notifywarning';
+            } else if ($action === 'selduplicate') {
+                // From the last to the first, so that the indexes stay valid.
+                foreach (array_reverse($indexes) as $idx) {
+                    array_splice($rows, $idx + 1, 0, [$copy_row($rows[$idx])]);
+                }
+                $message = get_string('bulk_duplicated', 'local_exammanager', count($indexes));
+            } else if ($action === 'seldelete') {
+                foreach ($indexes as $idx) {
+                    unset($rows[$idx]);
+                }
+                $rows = array_values($rows);
+                $message = get_string('bulk_deleted', 'local_exammanager', count($indexes));
+            } else {
+                // Same values for all the selected rows; empty fields are left unchanged.
+                $bulk = $_POST['bulk'] ?? [];
+                if (!is_array($bulk)) {
+                    $bulk = [];
+                }
+                $values = [];
+                foreach (['open_time', 'close_time'] as $field) {
+                    $value = trim((string)($bulk[$field] ?? ''));
+                    if ($value !== '') {
+                        $normalized = \local_exammanager\util::to_datetime_local_value($value);
+                        $values[$field] = $normalized !== '' ? $normalized : $value;
+                    }
+                }
+                $timelimit = trim((string)($bulk['time_limit'] ?? ''));
+                if ($timelimit !== '' && (int)$timelimit > 0) {
+                    $values['time_limit'] = (string)(int)$timelimit;
+                }
+                foreach (['access_code_action', 'seb_action'] as $field) {
+                    $value = trim((string)($bulk[$field] ?? ''));
+                    if (in_array($value, ['keep', 'generate', 'disable'], true)) {
+                        $values[$field] = $value;
+                    }
+                }
+
+                if (empty($values)) {
+                    $message = get_string('bulk_nothingtoapply', 'local_exammanager');
+                    $messagetype = 'notifywarning';
+                } else {
+                    foreach ($indexes as $idx) {
+                        foreach ($values as $field => $value) {
+                            $rows[$idx][$field] = $value;
+                        }
+                    }
+                    $message = get_string('bulk_applied', 'local_exammanager', count($indexes));
+                }
+            }
+        }
+
+        $rows = $revalidate_rows($rows);
+        $SESSION->$sessionkey = $rows;
+        if (empty($rows)) {
+            unset($SESSION->$sessionkey);
+        }
+        if ($message !== '') {
+            echo $OUTPUT->notification($message, $messagetype);
+        }
+    }
+}
+
+/* ========================
 PROGRAM
 ======================== */
 if ($action === 'program' && confirm_sesskey()) {
@@ -542,6 +686,47 @@ if (!empty($rows)) {
         // Default button for implicit submission (Enter key): refresh, never a row deletion.
         echo '<button type="submit" name="action" value="refreshrows" tabindex="-1" aria-hidden="true"'
             . ' style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;"></button>';
+
+        // Operations on the selected rows.
+        $bulkactionoptions = [
+            '' => get_string('bulk_nochange', 'local_exammanager'),
+            'keep' => get_string('action_keep', 'local_exammanager'),
+            'generate' => get_string('action_generate', 'local_exammanager'),
+            'disable' => get_string('action_disable', 'local_exammanager'),
+        ];
+        echo '<div class="local-exammanager-bulkbar" data-region="exammanager-bulkbar">';
+        echo '<div class="local-exammanager-bulkbar-head">';
+        echo '<strong>' . get_string('bulk_title', 'local_exammanager') . '</strong>';
+        echo '<span class="local-exammanager-muted small" data-region="selection-count"></span>';
+        echo '</div>';
+        echo '<div class="local-exammanager-bulkbar-fields">';
+        echo '<label>' . get_string('open', 'local_exammanager')
+            . html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'bulk[open_time]', 'class' => 'form-control'])
+            . '</label>';
+        echo '<label>' . get_string('close', 'local_exammanager')
+            . html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'bulk[close_time]', 'class' => 'form-control'])
+            . '</label>';
+        echo '<label>' . get_string('col_durationminutes', 'local_exammanager')
+            . html_writer::empty_tag('input', ['type' => 'number', 'name' => 'bulk[time_limit]', 'min' => '1', 'step' => '1',
+                'class' => 'form-control'])
+            . '</label>';
+        echo '<label>' . get_string('col_accessaction', 'local_exammanager')
+            . html_writer::select($bulkactionoptions, 'bulk[access_code_action]', '', false, ['class' => 'form-select custom-select'])
+            . '</label>';
+        echo '<label>' . get_string('col_sebaction', 'local_exammanager')
+            . html_writer::select($bulkactionoptions, 'bulk[seb_action]', '', false, ['class' => 'form-select custom-select'])
+            . '</label>';
+        echo '</div>';
+        echo '<div class="local-exammanager-bulkbar-buttons">';
+        echo '<button class="btn btn-primary" type="submit" name="action" value="selapply" data-needs-selection="1">'
+            . get_string('bulk_apply', 'local_exammanager') . '</button>';
+        echo '<button class="btn btn-outline-primary" type="submit" name="action" value="selduplicate" data-needs-selection="1">'
+            . get_string('bulk_duplicate', 'local_exammanager') . '</button>';
+        echo '<button class="btn btn-outline-danger" type="submit" name="action" value="seldelete" data-needs-selection="1"'
+            . ' data-confirm-delete="1">' . get_string('bulk_delete', 'local_exammanager') . '</button>';
+        echo '</div>';
+        echo '<div class="local-exammanager-muted small">' . get_string('bulk_help', 'local_exammanager') . '</div>';
+        echo '</div>';
     }
 
     echo '<div class="local-exammanager-preview-wrap">';
@@ -562,6 +747,14 @@ if (!empty($rows)) {
     ];
     if (!$islocked) {
         $previewheadings[] = [get_string('manualrow_actions', 'local_exammanager'), 'col-rowactions'];
+    }
+    if (!$islocked) {
+        echo html_writer::tag('th', html_writer::empty_tag('input', [
+            'type' => 'checkbox',
+            'class' => 'exammanager-select-all',
+            'title' => get_string('bulk_selectall', 'local_exammanager'),
+            'aria-label' => get_string('bulk_selectall', 'local_exammanager'),
+        ]), ['class' => 'col-select']);
     }
     foreach ($previewheadings as [$heading, $class]) {
         echo html_writer::tag('th', s($heading), ['class' => $class]);
@@ -593,6 +786,9 @@ if (!empty($rows)) {
             $closedisplay = str_replace('T', ' ', \local_exammanager\util::to_datetime_local_value($r['close_time'] ?? ''));
 
             echo '<tr class="exammanager-locked-row" data-row-index="' . $idx . '">';
+            if (!$islocked) {
+                echo html_writer::tag('td', '', ['class' => 'col-select']);
+            }
             echo html_writer::tag('td', s($coursevalue), ['class' => 'col-course']);
             echo html_writer::tag('td', s((string)($r['quiz_name'] ?? '')), ['class' => 'col-quizname']);
             echo html_writer::tag('td', s((string)($r['quiz_name'] ?? '')), ['class' => 'col-quizselect']);
@@ -730,6 +926,13 @@ if (!empty($rows)) {
         }
 
         echo '<tr class="exammanager-preview-row" data-row-index="' . $idx . '" data-course-valid="' . s($coursevalidity) . '" data-quiz-required="' . s($quizrequired) . '">';
+        echo html_writer::tag('td', html_writer::empty_tag('input', [
+            'type' => 'checkbox',
+            'name' => 'selectedrows[]',
+            'value' => (string)$idx,
+            'class' => 'exammanager-row-select',
+            'aria-label' => get_string('bulk_selectrow', 'local_exammanager', $idx + 1),
+        ]), ['class' => 'col-select']);
         echo html_writer::tag('td', $courseinput, ['class' => 'col-course']);
         echo html_writer::tag('td', $quiznameinput, ['class' => 'col-quizname']);
         echo html_writer::tag('td', $quizselector, ['class' => 'col-quizselect']);
@@ -748,7 +951,14 @@ if (!empty($rows)) {
             'class' => 'btn btn-sm btn-outline-danger',
             'formnovalidate' => 'formnovalidate',
         ]);
-        echo html_writer::tag('td', $deletebutton, ['class' => 'col-rowactions']);
+        $duplicatebutton = html_writer::tag('button', get_string('rowduplicate', 'local_exammanager'), [
+            'type' => 'submit',
+            'name' => 'duplicaterow',
+            'value' => (string)$idx,
+            'class' => 'btn btn-sm btn-outline-secondary',
+            'formnovalidate' => 'formnovalidate',
+        ]);
+        echo html_writer::tag('td', $duplicatebutton . ' ' . $deletebutton, ['class' => 'col-rowactions']);
         echo '</tr>';
     }
 
@@ -786,6 +996,7 @@ if (!empty($rows)) {
         echo '<div class="local-exammanager-muted small" style="margin-top:8px;">' . get_string('manualrow_refreshhint', 'local_exammanager') . '</div>';
 
         $PAGE->requires->js_call_amd('local_exammanager/preview_validation', 'init');
+        $PAGE->requires->js_call_amd('local_exammanager/row_selection', 'init', ['#exammanager-preview-form']);
     }
 
     echo '</form>';

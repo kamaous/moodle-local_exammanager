@@ -370,3 +370,22 @@ $string['manualrow_refreshhint'] = 'After entering or changing a course short na
 $string['manualrow_count'] = 'Number of rows';
 $string['manualrows_add'] = 'Add these rows';
 $string['manualrows_added'] = '{$a} new rows have been added.';
+
+// Row selection, duplication and operations on several rows.
+$string['bulk_title'] = 'Operations on the selected rows';
+$string['bulk_nochange'] = '- Do not change -';
+$string['bulk_apply'] = 'Apply to selection';
+$string['bulk_duplicate'] = 'Duplicate selection';
+$string['bulk_delete'] = 'Delete selection';
+$string['bulk_help'] = 'Tick rows, fill in only the fields to change (empty fields change nothing), then click "Apply to selection".';
+$string['bulk_selectall'] = 'Select all';
+$string['bulk_selectrow'] = 'Select row {$a}';
+$string['bulk_selectioncount'] = '{$a} row(s) selected';
+$string['bulk_confirmdelete'] = 'Delete the {$a} selected row(s)?';
+$string['bulk_noselection'] = 'No row selected.';
+$string['bulk_nothingtoapply'] = 'Nothing to apply: fill in at least one field.';
+$string['bulk_applied'] = 'Values applied to {$a} row(s).';
+$string['bulk_duplicated'] = '{$a} row(s) duplicated.';
+$string['bulk_deleted'] = '{$a} row(s) deleted.';
+$string['rowduplicate'] = 'Duplicate';
+$string['rowduplicated'] = 'The row has been duplicated.';

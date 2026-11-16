@@ -34,6 +34,7 @@ $PAGE->set_heading(get_string('pluginname', 'local_exammanager'));
 
 $PAGE->requires->js_call_amd('local_exammanager/activity_targets', 'init');
 $PAGE->requires->js_call_amd('local_exammanager/activity_apply', 'init');
+$PAGE->requires->js_call_amd('local_exammanager/row_selection', 'init', ['#exammanager-bulk-preview-form']);
 
 global $OUTPUT;
 global $SESSION, $USER;
@@ -44,6 +45,11 @@ $action = optional_param('action', '', PARAM_ALPHA);
 $removebulkrow = optional_param('removebulkrow', -1, PARAM_INT);
 if ($removebulkrow >= 0) {
     $action = 'bulkdeleterow';
+}
+// A per-row "Duplicate" button of the bulk preview posts the index of the row to copy.
+$duplicatebulkrow = optional_param('duplicatebulkrow', -1, PARAM_INT);
+if ($duplicatebulkrow >= 0) {
+    $action = 'bulkduplicaterow';
 }
 $sessionkey = 'local_exammanager_activity_import_' . $USER->id;
 $course = null;
@@ -226,6 +232,77 @@ if ($action === 'bulkpreview' && confirm_sesskey()) {
         }
         $applymessage = get_string('manualrow_deleted', 'local_exammanager');
         $applymessagetype = 'notifysuccess';
+    }
+} else if (in_array($action, ['bulkduplicaterow', 'bulkselapply', 'bulkselduplicate', 'bulkseldelete'], true)
+        && confirm_sesskey()) {
+    if (empty($SESSION->$sessionkey) || !is_array($SESSION->$sessionkey)) {
+        $applymessage = get_string('nopreviewtorefresh', 'local_exammanager');
+        $applymessagetype = 'notifyproblem';
+    } else {
+        $postedrows = $_POST['rowedit'] ?? [];
+        if (!is_array($postedrows)) {
+            $postedrows = [];
+        }
+        $indexes = ($action === 'bulkduplicaterow')
+            ? [$duplicatebulkrow]
+            : optional_param_array('selectedbulkrows', [], PARAM_INT);
+        $applymessagetype = 'notifysuccess';
+
+        if (empty($indexes)) {
+            // Nothing ticked: keep the edits, change nothing else.
+            $bulkrows = \local_exammanager\activity_planner::rebuild_import_preview($SESSION->$sessionkey, $postedrows, $shortname);
+            $applymessage = get_string('bulk_noselection', 'local_exammanager');
+            $applymessagetype = 'notifywarning';
+        } else if ($action === 'bulkduplicaterow' || $action === 'bulkselduplicate') {
+            $bulkrows = \local_exammanager\activity_planner::duplicate_import_rows($SESSION->$sessionkey, $postedrows,
+                $indexes, $shortname);
+            $applymessage = ($action === 'bulkduplicaterow')
+                ? get_string('rowduplicated', 'local_exammanager')
+                : get_string('bulk_duplicated', 'local_exammanager', count($indexes));
+        } else if ($action === 'bulkseldelete') {
+            $bulkrows = \local_exammanager\activity_planner::remove_import_rows($SESSION->$sessionkey, $postedrows,
+                $indexes, $shortname);
+            $applymessage = get_string('bulk_deleted', 'local_exammanager', count($indexes));
+        } else {
+            // Same values for all the selected rows; empty fields are left unchanged.
+            $bulk = $_POST['bulk'] ?? [];
+            if (!is_array($bulk)) {
+                $bulk = [];
+            }
+            $values = [];
+            $restrictiontype = trim((string)($bulk['restriction_type'] ?? ''));
+            if (in_array($restrictiontype, ['date', 'grade', 'profile', 'set', 'remove'], true)) {
+                $values['restriction_type'] = $restrictiontype;
+            }
+            $direction = trim((string)($bulk['date_direction'] ?? ''));
+            if (in_array($direction, ['from', 'until'], true)) {
+                $values['date_direction'] = $direction;
+            }
+            $datetime = trim((string)($bulk['date_time'] ?? ''));
+            if ($datetime !== '') {
+                $values['date_time'] = $datetime;
+            }
+            $show = trim((string)($bulk['show'] ?? ''));
+            if ($show === '0' || $show === '1') {
+                $values['show'] = $show;
+            }
+
+            if (empty($values)) {
+                $bulkrows = \local_exammanager\activity_planner::rebuild_import_preview($SESSION->$sessionkey, $postedrows, $shortname);
+                $applymessage = get_string('bulk_nothingtoapply', 'local_exammanager');
+                $applymessagetype = 'notifywarning';
+            } else {
+                $bulkrows = \local_exammanager\activity_planner::apply_values_to_import_rows($SESSION->$sessionkey, $postedrows,
+                    $indexes, $values, $shortname);
+                $applymessage = get_string('bulk_applied', 'local_exammanager', count($indexes));
+            }
+        }
+
+        if (empty($bulkrows)) {
+            unset($SESSION->$sessionkey);
+        } else {
+            $SESSION->$sessionkey = $bulkrows;
+        }
     }
 } else if (!empty($SESSION->$sessionkey) && is_array($SESSION->$sessionkey)) {
     $bulkrows = $SESSION->$sessionkey;
@@ -676,12 +753,56 @@ if (!empty($bulkrows)) {
     echo '<span>' . get_string('readycountlabel', 'local_exammanager', $readycount) . '</span>';
     echo '</div>';
 
-    echo '<form method="post">';
+    echo '<form method="post" id="exammanager-bulk-preview-form">';
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()]);
     echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'shortname', 'value' => $shortname]);
     // Default button for implicit submission (Enter key): refresh, never a row deletion.
     echo '<button type="submit" name="action" value="bulkrefresh" tabindex="-1" aria-hidden="true"'
         . ' style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;"></button>';
+
+    // Operations on the selected rows.
+    $nochange = ['' => get_string('bulk_nochange', 'local_exammanager')];
+    echo '<div class="local-exammanager-bulkbar" data-region="exammanager-bulkbar">';
+    echo '<div class="local-exammanager-bulkbar-head">';
+    echo '<strong>' . get_string('bulk_title', 'local_exammanager') . '</strong>';
+    echo '<span class="local-exammanager-muted small" data-region="selection-count"></span>';
+    echo '</div>';
+    echo '<div class="local-exammanager-bulkbar-fields">';
+    echo '<label>' . get_string('restrictionlabel', 'local_exammanager')
+        . html_writer::select($nochange + [
+            'date' => get_string('restrictionkind_date', 'local_exammanager'),
+            'grade' => get_string('restrictionkind_grade', 'local_exammanager'),
+            'profile' => get_string('restrictionkind_profile', 'local_exammanager'),
+            'set' => get_string('restrictionkind_set', 'local_exammanager'),
+            'remove' => get_string('restrictionkind_remove', 'local_exammanager'),
+        ], 'bulk[restriction_type]', '', false, ['class' => 'form-select custom-select'])
+        . '</label>';
+    echo '<label>' . get_string('directionlabel', 'local_exammanager')
+        . html_writer::select($nochange + [
+            'from' => get_string('direction_from', 'local_exammanager'),
+            'until' => get_string('direction_until', 'local_exammanager'),
+        ], 'bulk[date_direction]', '', false, ['class' => 'form-select custom-select'])
+        . '</label>';
+    echo '<label>' . get_string('datetimelabel', 'local_exammanager')
+        . html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'bulk[date_time]', 'class' => 'form-control'])
+        . '</label>';
+    echo '<label>' . get_string('displaylabel', 'local_exammanager')
+        . html_writer::select($nochange + [
+            '1' => get_string('yeslabel', 'local_exammanager'),
+            '0' => get_string('nolabel', 'local_exammanager'),
+        ], 'bulk[show]', '', false, ['class' => 'form-select custom-select'])
+        . '</label>';
+    echo '</div>';
+    echo '<div class="local-exammanager-bulkbar-buttons">';
+    echo '<button class="btn btn-primary" type="submit" name="action" value="bulkselapply" data-needs-selection="1">'
+        . get_string('bulk_apply', 'local_exammanager') . '</button>';
+    echo '<button class="btn btn-outline-primary" type="submit" name="action" value="bulkselduplicate" data-needs-selection="1">'
+        . get_string('bulk_duplicate', 'local_exammanager') . '</button>';
+    echo '<button class="btn btn-outline-danger" type="submit" name="action" value="bulkseldelete" data-needs-selection="1"'
+        . ' data-confirm-delete="1">' . get_string('bulk_delete', 'local_exammanager') . '</button>';
+    echo '</div>';
+    echo '<div class="local-exammanager-muted small">' . get_string('bulk_help', 'local_exammanager') . '</div>';
+    echo '</div>';
     echo '<div class="local-exammanager-preview-wrap">';
     echo '<table class="generaltable local-exammanager-bulk-table">';
     echo '<thead><tr>';
@@ -697,6 +818,12 @@ if (!empty($bulkrows)) {
         get_string('message', 'local_exammanager'),
         get_string('manualrow_actions', 'local_exammanager'),
     ];
+    echo html_writer::tag('th', html_writer::empty_tag('input', [
+        'type' => 'checkbox',
+        'class' => 'exammanager-select-all',
+        'title' => get_string('bulk_selectall', 'local_exammanager'),
+        'aria-label' => get_string('bulk_selectall', 'local_exammanager'),
+    ]), ['class' => 'col-select']);
     foreach ($bulktableheadings as $heading) {
         echo html_writer::tag('th', s($heading));
     }
@@ -708,6 +835,13 @@ if (!empty($bulkrows)) {
         $statusclass = in_array($status, ['READY', 'APPLIQUÉ'], true) ? 'ok' : 'err';
 
         echo '<tr class="exammanager-bulk-target-row">';
+        echo html_writer::tag('td', html_writer::empty_tag('input', [
+            'type' => 'checkbox',
+            'name' => 'selectedbulkrows[]',
+            'value' => (string)$idx,
+            'class' => 'exammanager-row-select',
+            'aria-label' => get_string('bulk_selectrow', 'local_exammanager', $idx + 1),
+        ]), ['class' => 'col-select']);
         echo html_writer::tag('td', s((string)($bulkrow['rownum'] ?? '')));
         echo html_writer::tag('td', $renderbulkinput($idx, 'course_shortname', $source, [
             'class' => 'form-control exammanager-bulk-course',
@@ -723,13 +857,21 @@ if (!empty($bulkrows)) {
         echo html_writer::tag('td', s((string)($bulkrow['target_label'] ?? '')) . '<br>' . s((string)($bulkrow['restriction_label'] ?? '')));
         echo html_writer::tag('td', html_writer::span($status, 'local-exammanager-badge ' . $statusclass));
         echo html_writer::tag('td', s((string)($bulkrow['message'] ?? '')));
-        echo html_writer::tag('td', html_writer::tag('button', get_string('manualrow_delete', 'local_exammanager'), [
+        $duplicatebutton = html_writer::tag('button', get_string('rowduplicate', 'local_exammanager'), [
+            'type' => 'submit',
+            'name' => 'duplicatebulkrow',
+            'value' => (string)$idx,
+            'class' => 'btn btn-sm btn-outline-secondary',
+            'formnovalidate' => 'formnovalidate',
+        ]);
+        $deletebutton = html_writer::tag('button', get_string('manualrow_delete', 'local_exammanager'), [
             'type' => 'submit',
             'name' => 'removebulkrow',
             'value' => (string)$idx,
             'class' => 'btn btn-sm btn-outline-danger',
             'formnovalidate' => 'formnovalidate',
-        ]));
+        ]);
+        echo html_writer::tag('td', $duplicatebutton . ' ' . $deletebutton, ['class' => 'col-rowactions']);
         echo '</tr>';
     }
 

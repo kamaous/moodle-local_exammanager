@@ -370,3 +370,22 @@ $string['manualrow_refreshhint'] = 'Après avoir saisi ou modifié le nom abrég
 $string['manualrow_count'] = 'Nombre de lignes';
 $string['manualrows_add'] = 'Ajouter ces lignes';
 $string['manualrows_added'] = '{$a} nouvelles lignes ont été ajoutées.';
+
+// Row selection, duplication and operations on several rows.
+$string['bulk_title'] = 'Opérations sur les lignes sélectionnées';
+$string['bulk_nochange'] = '- Ne pas modifier -';
+$string['bulk_apply'] = 'Appliquer à la sélection';
+$string['bulk_duplicate'] = 'Dupliquer la sélection';
+$string['bulk_delete'] = 'Supprimer la sélection';
+$string['bulk_help'] = 'Cochez des lignes, renseignez uniquement les champs à modifier (un champ vide ne change rien), puis cliquez sur « Appliquer à la sélection ».';
+$string['bulk_selectall'] = 'Tout sélectionner';
+$string['bulk_selectrow'] = 'Sélectionner la ligne {$a}';
+$string['bulk_selectioncount'] = '{$a} ligne(s) sélectionnée(s)';
+$string['bulk_confirmdelete'] = 'Supprimer les {$a} ligne(s) sélectionnée(s) ?';
+$string['bulk_noselection'] = 'Aucune ligne sélectionnée.';
+$string['bulk_nothingtoapply'] = 'Rien à appliquer : renseignez au moins un champ.';
+$string['bulk_applied'] = 'Valeurs appliquées à {$a} ligne(s).';
+$string['bulk_duplicated'] = '{$a} ligne(s) dupliquée(s).';
+$string['bulk_deleted'] = '{$a} ligne(s) supprimée(s).';
+$string['rowduplicate'] = 'Dupliquer';
+$string['rowduplicated'] = 'La ligne a été dupliquée.';

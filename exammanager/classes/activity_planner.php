@@ -469,6 +469,112 @@ class activity_planner {
         return array_values($preview);
     }
 
+    /**
+     * Duplicates rows of the bulk preview: each copy is inserted right after its source row.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param int[] $indexes Indexes of the rows to duplicate.
+     * @param string $defaultshortname Default course shortname.
+     * @return array
+     */
+    public static function duplicate_import_rows(array $previewrows, array $postedrows, array $indexes,
+            string $defaultshortname = ''): array {
+        $preview = self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        $indexes = self::valid_indexes($preview, $indexes);
+
+        // From the last to the first, so that the indexes stay valid.
+        foreach (array_reverse($indexes) as $idx) {
+            $source = (array)($preview[$idx]['source_row'] ?? []);
+            array_splice($preview, $idx + 1, 0, [self::preview_import_row($source, 0, $defaultshortname)]);
+        }
+
+        return self::renumber_import_rows($preview);
+    }
+
+    /**
+     * Removes several rows from the bulk preview.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param int[] $indexes Indexes of the rows to remove.
+     * @param string $defaultshortname Default course shortname.
+     * @return array
+     */
+    public static function remove_import_rows(array $previewrows, array $postedrows, array $indexes,
+            string $defaultshortname = ''): array {
+        $preview = self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        foreach (self::valid_indexes($preview, $indexes) as $idx) {
+            unset($preview[$idx]);
+        }
+
+        return self::renumber_import_rows(array_values($preview));
+    }
+
+    /**
+     * Gives the same values (restriction type, date, display) to several rows of the bulk preview.
+     * Only the fields present in $values are changed; the rows are then checked again.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param int[] $indexes Indexes of the rows to change.
+     * @param array $values Field => value (restriction_type, date_direction, date_time, show).
+     * @param string $defaultshortname Default course shortname.
+     * @return array
+     */
+    public static function apply_values_to_import_rows(array $previewrows, array $postedrows, array $indexes,
+            array $values, string $defaultshortname = ''): array {
+        $preview = self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        $allowed = array_flip(['restriction_type', 'date_direction', 'date_time', 'show']);
+        $values = array_intersect_key($values, $allowed);
+
+        foreach (self::valid_indexes($preview, $indexes) as $idx) {
+            $source = (array)($preview[$idx]['source_row'] ?? []);
+            foreach ($values as $field => $value) {
+                $source[$field] = (string)$value;
+            }
+            $preview[$idx] = self::preview_import_row($source, 0, $defaultshortname);
+        }
+
+        return self::renumber_import_rows($preview);
+    }
+
+    /**
+     * Keeps the existing, distinct indexes, in ascending order.
+     *
+     * @param array $preview Preview rows.
+     * @param array $indexes Requested indexes.
+     * @return int[]
+     */
+    private static function valid_indexes(array $preview, array $indexes): array {
+        $valid = [];
+        foreach ($indexes as $idx) {
+            $idx = (int)$idx;
+            if (isset($preview[$idx])) {
+                $valid[$idx] = $idx;
+            }
+        }
+        ksort($valid);
+
+        return array_values($valid);
+    }
+
+    /**
+     * Renumbers the "Line" column after rows were added, duplicated or removed.
+     *
+     * @param array $preview Preview rows.
+     * @return array
+     */
+    private static function renumber_import_rows(array $preview): array {
+        $preview = array_values($preview);
+        foreach ($preview as $idx => &$row) {
+            $row['rownum'] = $idx + 2;
+        }
+        unset($row);
+
+        return $preview;
+    }
+
     public static function apply_import_preview_row(array $row): array {
         $status = (string)($row['status'] ?? '');
         if ($status !== 'READY') {
