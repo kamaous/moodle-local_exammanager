@@ -56,7 +56,7 @@ validation before anything is written to the database.
 - Average number of participants per scheduled test.
 - Average participation rate per course.
 - Average attempt duration.
-- An analytics chart (Chart.js).
+- An analytics chart (Moodle core chart API, no external library).
 
 ### Other screens
 - **Activity planner**: bulk availability-restriction planning for other
@@ -65,7 +65,7 @@ validation before anything is written to the database.
   manual entry mode ("Add a row" / "Delete") that needs no file, with row
   duplication and operations on the selected rows (same date, display,
   duplicate, delete).
-- **Calendar**: an interactive FullCalendar view of every scheduled exam,
+- **Calendar**: an interactive FullCalendar view (library shipped with the plugin) of every scheduled exam,
   with room and supervisor conflict detection.
 - **History**: a filterable, paginated history of every scheduled exam
   (statuses: scheduled, running, finished, hidden, error), with CSV export.

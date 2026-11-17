@@ -389,3 +389,17 @@ $string['bulk_duplicated'] = '{$a} row(s) duplicated.';
 $string['bulk_deleted'] = '{$a} row(s) deleted.';
 $string['rowduplicate'] = 'Duplicate';
 $string['rowduplicated'] = 'The row has been duplicated.';
+
+// Security fixes: events (traceability) and privacy metadata.
+$string['event_examprogrammed'] = 'Exam programmed';
+$string['event_restrictionsupdated'] = 'Access restrictions updated';
+$string['privacy:metadata:codes'] = 'Exams programmed with the exam manager (dates, duration, access and SEB settings).';
+$string['privacy:metadata:codes:usermodified'] = 'The user who last programmed the exam.';
+$string['privacy:metadata:codes:teacher'] = 'Name of the supervisor entered in the planning (free text).';
+$string['privacy:metadata:codes:room'] = 'Room entered in the planning.';
+$string['privacy:metadata:codes:sessionname'] = 'Exam session entered in the planning.';
+$string['privacy:metadata:codes:quizname'] = 'Name of the programmed quiz.';
+$string['privacy:metadata:codes:course_shortname'] = 'Short name of the course of the quiz.';
+$string['privacy:metadata:codes:timeopen'] = 'Opening date of the exam.';
+$string['privacy:metadata:codes:timeclose'] = 'Closing date of the exam.';
+$string['privacy:metadata:codes:timemodified'] = 'Date of the last programming.';

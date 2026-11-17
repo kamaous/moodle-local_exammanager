@@ -334,7 +334,34 @@ class activity_planner {
 
         $tx->allow_commit();
 
+        self::log_restrictions_updated($course, 'activities', array_keys($cms), $remove);
+
         return ['updated' => $updated, 'requested' => count($cmids)];
+    }
+
+    /**
+     * Traceability: logs the restriction change in the course logs.
+     *
+     * @param \stdClass $course Course.
+     * @param string $targettype sections|activities
+     * @param int[] $ids Ids of the updated sections / course modules.
+     * @param bool $remove True when the restrictions were removed.
+     */
+    private static function log_restrictions_updated(\stdClass $course, string $targettype, array $ids, bool $remove): void {
+        try {
+            \local_exammanager\event\restrictions_updated::create([
+                'context' => \context_course::instance((int)$course->id),
+                'courseid' => (int)$course->id,
+                'other' => [
+                    'targettype' => $targettype,
+                    'targetids' => implode(',', array_map('intval', $ids)),
+                    'restrictiontype' => $remove ? 'remove' : 'add',
+                ],
+            ])->trigger();
+        } catch (\Throwable $e) {
+            // The change is already committed: a logging failure must not report it as failed.
+            debugging('ExamManager event logging error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
     }
 
     public static function apply_section_restriction(\stdClass $course, array $sectionids, \stdClass $restriction, bool $show = true): array {
@@ -377,6 +404,8 @@ class activity_planner {
         }
 
         $tx->allow_commit();
+
+        self::log_restrictions_updated($course, 'sections', array_keys($sections), $remove);
 
         return ['updated' => $updated, 'requested' => count($sectionids)];
     }

@@ -389,3 +389,17 @@ $string['bulk_duplicated'] = '{$a} ligne(s) dupliquée(s).';
 $string['bulk_deleted'] = '{$a} ligne(s) supprimée(s).';
 $string['rowduplicate'] = 'Dupliquer';
 $string['rowduplicated'] = 'La ligne a été dupliquée.';
+
+// Security fixes: events (traceability) and privacy metadata.
+$string['event_examprogrammed'] = 'Examen programmé';
+$string['event_restrictionsupdated'] = 'Restrictions d\'accès modifiées';
+$string['privacy:metadata:codes'] = 'Examens programmés avec le gestionnaire d\'examens (dates, durée, réglages d\'accès et SEB).';
+$string['privacy:metadata:codes:usermodified'] = 'Utilisateur ayant programmé l\'examen en dernier.';
+$string['privacy:metadata:codes:teacher'] = 'Nom du surveillant saisi dans le planning (texte libre).';
+$string['privacy:metadata:codes:room'] = 'Salle saisie dans le planning.';
+$string['privacy:metadata:codes:sessionname'] = 'Session d\'examen saisie dans le planning.';
+$string['privacy:metadata:codes:quizname'] = 'Nom du test programmé.';
+$string['privacy:metadata:codes:course_shortname'] = 'Nom abrégé du cours du test.';
+$string['privacy:metadata:codes:timeopen'] = 'Date d\'ouverture de l\'examen.';
+$string['privacy:metadata:codes:timeclose'] = 'Date de fermeture de l\'examen.';
+$string['privacy:metadata:codes:timemodified'] = 'Date de la dernière programmation.';
