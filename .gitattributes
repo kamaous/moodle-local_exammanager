@@ -1,0 +1,2 @@
+# Third-party libraries are kept byte-for-byte identical to the upstream release.
+exammanager/thirdparty/** -text
