@@ -44,6 +44,44 @@ class util {
     }
 
     /**
+     * Invalidates the course cache after activities or sections were changed directly in the database.
+     *
+     * Since Moodle 4.0 the course cache is rebuilt partially: only the activities and sections that were
+     * explicitly purged are read again, the others are taken from the previous cache. Bumping the course
+     * cache revision alone is therefore not enough (the course page would keep showing the old dates,
+     * visibility or restrictions until the activity itself is opened). Same sequence as core
+     * update_moduleinfo(): purge each changed activity / section, then rebuild the course cache.
+     *
+     * @param int $courseid Course id.
+     * @param int[] $cmids Course module ids that were changed.
+     * @param int[] $sectionids Course section ids (table ids) that were changed.
+     */
+    public static function purge_course_cache(int $courseid, array $cmids = [], array $sectionids = []): void {
+        $modinfoclass = '\course_modinfo';
+
+        if (class_exists($modinfoclass)) {
+            if (method_exists($modinfoclass, 'purge_course_module_cache')) {
+                foreach (array_unique(array_map('intval', $cmids)) as $cmid) {
+                    if ($cmid > 0) {
+                        $modinfoclass::purge_course_module_cache($courseid, $cmid);
+                    }
+                }
+            }
+            if (method_exists($modinfoclass, 'purge_course_section_cache_by_id')) {
+                foreach (array_unique(array_map('intval', $sectionids)) as $sectionid) {
+                    if ($sectionid > 0) {
+                        $modinfoclass::purge_course_section_cache_by_id($courseid, $sectionid);
+                    }
+                }
+            }
+        }
+
+        // Partial rebuild (Moodle 4.0+): the purged items are rebuilt, the rest is reused.
+        // On older versions the third argument is simply ignored and the whole cache is cleared.
+        rebuild_course_cache($courseid, true, true);
+    }
+
+    /**
      * Generates a unique code (5 digits).
      */
     public static function generate_code(array &$used): string {

@@ -326,13 +326,10 @@ class activity_planner {
             $updated++;
         }
 
-        if (class_exists('\\core_course\\cache')) {
-            \core_course\cache::purge_course_cache((int)$course->id);
-        } else if (function_exists('rebuild_course_cache')) {
-            rebuild_course_cache((int)$course->id, true);
-        }
-
         $tx->allow_commit();
+
+        // After the commit: the changed activities are read again (not taken from the old cache).
+        util::purge_course_cache((int)$course->id, array_keys($cms));
 
         self::log_restrictions_updated($course, 'activities', array_keys($cms), $remove);
 
@@ -397,13 +394,10 @@ class activity_planner {
             $updated++;
         }
 
-        if (class_exists('\\core_course\\cache')) {
-            \core_course\cache::purge_course_cache((int)$course->id);
-        } else if (function_exists('rebuild_course_cache')) {
-            rebuild_course_cache((int)$course->id, true);
-        }
-
         $tx->allow_commit();
+
+        // After the commit: the changed sections are read again (not taken from the old cache).
+        util::purge_course_cache((int)$course->id, [], array_keys($sections));
 
         self::log_restrictions_updated($course, 'sections', array_keys($sections), $remove);
 

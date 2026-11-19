@@ -61,10 +61,7 @@ class manager {
                 debugging('Quiz visibility update via set_coursemodule_visible failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
         }
-
-        if (class_exists('\core_course\cache')) {
-            \core_course\cache::purge_course_module_cache($course->id, $cm->id);
-        }
+        // The course cache is purged once, at the end of program_row().
     }
 
     /**
@@ -430,12 +427,6 @@ class manager {
                 quiz_update_events($updatedquiz);
             }
 
-            if (class_exists('\\core_course\\cache')) {
-                \core_course\cache::purge_course_cache($course->id);
-            } else if (function_exists('rebuild_course_cache')) {
-                rebuild_course_cache($course->id, true);
-            }
-
             $r = new \stdClass();
             $r->quizid = $quiz->id;
             $r->courseid = $course->id;
@@ -474,6 +465,14 @@ class manager {
 
             $tx->allow_commit();
             $tx = null;
+
+            // After the commit, so that the course page is rebuilt from the saved data:
+            // the quiz (dates, visibility) and its section are read again, not taken from the old cache.
+            try {
+                util::purge_course_cache((int)$course->id, [(int)$cm->id], [(int)$cm->section]);
+            } catch (\Throwable $e) {
+                debugging('ExamManager course cache purge error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
 
             // Traceability: who programmed which exam, and how (codes are never logged).
             try {
