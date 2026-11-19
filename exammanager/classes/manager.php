@@ -61,10 +61,7 @@ class manager {
                 debugging('Quiz visibility update via set_coursemodule_visible failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
         }
-
-        if (class_exists('\core_course\cache')) {
-            \core_course\cache::purge_course_module_cache($course->id, $cm->id);
-        }
+        // The course cache is purged once, at the end of program_row().
     }
 
     /**
@@ -156,6 +153,60 @@ class manager {
      * Applique l'action SEB sur la table quizaccess_seb_quizsettings si disponible.
      */
     private static function apply_seb_action(\moodle_database $DB, \stdClass $quiz, \stdClass $cm, string $sebaction, string $sebcode): void {
+        if ($sebaction === 'keep') {
+            return;
+        }
+
+        // Moodle 3.9+: go through the SEB persistent API, which keeps the SEB caches
+        // (quiz settings, config, config key) and the generated SEB configuration in sync.
+        // Writing the table directly would leave stale cached settings in force.
+        if (class_exists('\quizaccess_seb\seb_quiz_settings') && class_exists('\quizaccess_seb\settings_provider')) {
+            self::apply_seb_action_with_api($quiz, $cm, $sebaction, $sebcode);
+            return;
+        }
+
+        self::apply_seb_action_legacy($DB, $quiz, $cm, $sebaction, $sebcode);
+    }
+
+    /**
+     * SEB update through \quizaccess_seb\seb_quiz_settings (same behaviour as the quiz settings form).
+     */
+    private static function apply_seb_action_with_api(\stdClass $quiz, \stdClass $cm, string $sebaction, string $sebcode): void {
+        $provider = '\quizaccess_seb\settings_provider';
+        $settings = \quizaccess_seb\seb_quiz_settings::get_record(['quizid' => (int)$quiz->id]);
+
+        if ($sebaction === 'disable') {
+            // As in core: "SEB not required" means no settings record at all.
+            if ($settings) {
+                $settings->delete();
+            }
+            $provider::delete_uploaded_config_file((string)$cm->id);
+            return;
+        }
+
+        // Generate: SEB required, configured manually, with the generated quit password.
+        if (!$settings) {
+            $settings = new \quizaccess_seb\seb_quiz_settings(0, (object)[
+                'quizid' => (int)$quiz->id,
+                'cmid' => (int)$cm->id,
+            ]);
+        }
+        $settings->set('cmid', (int)$cm->id);
+        $settings->set('requiresafeexambrowser', $provider::USE_SEB_CONFIG_MANUALLY);
+        $settings->set('allowuserquitseb', 1);
+        $settings->set('quitpassword', $sebcode);
+        $settings->set('linkquitseb', '');
+        $settings->set('userconfirmquit', 1);
+        $settings->set('showsebdownloadlink', 1);
+        $settings->save();
+
+        $provider::delete_uploaded_config_file((string)$cm->id);
+    }
+
+    /**
+     * Fallback for sites without the SEB persistent API: direct table update, then cache purge.
+     */
+    private static function apply_seb_action_legacy(\moodle_database $DB, \stdClass $quiz, \stdClass $cm, string $sebaction, string $sebcode): void {
         [$existingseb, , $cols] = self::get_current_seb_state($DB, $quiz, $cm);
         if (empty($cols) || $sebaction === 'keep') {
             return;
@@ -181,7 +232,7 @@ class manager {
                 $s->showsebdownloadlink = 1;
             }
             if (isset($cols['linkquitseb'])) {
-                $s->linkquitseb = 0;
+                $s->linkquitseb = '';
             }
             if (isset($cols['userconfirmquit'])) {
                 $s->userconfirmquit = 1;
@@ -212,8 +263,9 @@ class manager {
     }
 
     public static function program_row(array $row, array &$usedcodes): array {
-        global $DB;
+        global $DB, $USER, $CFG;
 
+        $tx = null;
         try {
             $course_shortname = trim((string)($row['course_shortname'] ?? ''));
             $quiz_name = trim((string)($row['quiz_name'] ?? ''));
@@ -367,10 +419,12 @@ class manager {
 
             $DB->update_record('quiz', $q);
 
-            if (class_exists('\\core_course\\cache')) {
-                \core_course\cache::purge_course_cache($course->id);
-            } else if (function_exists('rebuild_course_cache')) {
-                rebuild_course_cache($course->id, true);
+            // Keep the course calendar / timeline events of the quiz in line with the new dates.
+            require_once($CFG->dirroot . '/mod/quiz/lib.php');
+            if (function_exists('quiz_update_events')) {
+                $updatedquiz = $DB->get_record('quiz', ['id' => $quiz->id], '*', MUST_EXIST);
+                $updatedquiz->coursemodule = $cm->id;
+                quiz_update_events($updatedquiz);
             }
 
             $r = new \stdClass();
@@ -389,6 +443,7 @@ class manager {
             $r->timeclose = $timeclose;
             $r->timelimit = $timelimit;
             $r->timemodified = time();
+            $r->usermodified = (int)$USER->id;
 
             if ($existing) {
                 $r->id = $existing->id;
@@ -398,11 +453,8 @@ class manager {
                 $DB->insert_record('local_exammanager_codes', $r);
             }
 
-            try {
-                self::apply_seb_action($DB, $quiz, $cm, $sebaction, $seb);
-            } catch (\Throwable $e) {
-                debugging('SEB update error: ' . $e->getMessage(), DEBUG_DEVELOPER);
-            }
+            // A SEB failure must not be hidden: the whole row is rolled back and reported as an error.
+            self::apply_seb_action($DB, $quiz, $cm, $sebaction, $seb);
 
             try {
                 self::reveal_quiz_section($course, $cm);
@@ -412,6 +464,34 @@ class manager {
             }
 
             $tx->allow_commit();
+            $tx = null;
+
+            // After the commit, so that the course page is rebuilt from the saved data:
+            // the quiz (dates, visibility) and its section are read again, not taken from the old cache.
+            try {
+                util::purge_course_cache((int)$course->id, [(int)$cm->id], [(int)$cm->section]);
+            } catch (\Throwable $e) {
+                debugging('ExamManager course cache purge error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+
+            // Traceability: who programmed which exam, and how (codes are never logged).
+            try {
+                \local_exammanager\event\exam_programmed::create([
+                    'objectid' => (int)$quiz->id,
+                    'context' => \context_module::instance($cm->id),
+                    'courseid' => (int)$course->id,
+                    'other' => [
+                        'timeopen' => (int)$timeopen,
+                        'timeclose' => (int)$timeclose,
+                        'timelimit' => (int)$timelimit,
+                        'accessaction' => $accessaction,
+                        'sebaction' => $sebaction,
+                    ],
+                ])->trigger();
+            } catch (\Throwable $e) {
+                // The change is already committed: a logging failure must not report it as failed.
+                debugging('ExamManager event logging error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
 
             $message = get_string('examprogrammedsuccess', 'local_exammanager');
             if ($accessaction === 'disable' && $sebaction === 'disable') {
@@ -432,6 +512,14 @@ class manager {
             ];
 
         } catch (\Throwable $e) {
+            if ($tx !== null && !$tx->is_disposed()) {
+                try {
+                    // Rolls back the quiz, codes and SEB changes of this row (rethrows $e).
+                    $tx->rollback($e);
+                } catch (\Throwable $ignored) {
+                    // Expected: rollback() rethrows the original exception.
+                }
+            }
             debugging('ExamManager programming error: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return [
                 'status' => 'ERROR',

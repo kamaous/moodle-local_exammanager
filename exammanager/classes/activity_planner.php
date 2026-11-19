@@ -326,15 +326,39 @@ class activity_planner {
             $updated++;
         }
 
-        if (class_exists('\\core_course\\cache')) {
-            \core_course\cache::purge_course_cache((int)$course->id);
-        } else if (function_exists('rebuild_course_cache')) {
-            rebuild_course_cache((int)$course->id, true);
-        }
-
         $tx->allow_commit();
 
+        // After the commit: the changed activities are read again (not taken from the old cache).
+        util::purge_course_cache((int)$course->id, array_keys($cms));
+
+        self::log_restrictions_updated($course, 'activities', array_keys($cms), $remove);
+
         return ['updated' => $updated, 'requested' => count($cmids)];
+    }
+
+    /**
+     * Traceability: logs the restriction change in the course logs.
+     *
+     * @param \stdClass $course Course.
+     * @param string $targettype sections|activities
+     * @param int[] $ids Ids of the updated sections / course modules.
+     * @param bool $remove True when the restrictions were removed.
+     */
+    private static function log_restrictions_updated(\stdClass $course, string $targettype, array $ids, bool $remove): void {
+        try {
+            \local_exammanager\event\restrictions_updated::create([
+                'context' => \context_course::instance((int)$course->id),
+                'courseid' => (int)$course->id,
+                'other' => [
+                    'targettype' => $targettype,
+                    'targetids' => implode(',', array_map('intval', $ids)),
+                    'restrictiontype' => $remove ? 'remove' : 'add',
+                ],
+            ])->trigger();
+        } catch (\Throwable $e) {
+            // The change is already committed: a logging failure must not report it as failed.
+            debugging('ExamManager event logging error: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
     }
 
     public static function apply_section_restriction(\stdClass $course, array $sectionids, \stdClass $restriction, bool $show = true): array {
@@ -370,13 +394,12 @@ class activity_planner {
             $updated++;
         }
 
-        if (class_exists('\\core_course\\cache')) {
-            \core_course\cache::purge_course_cache((int)$course->id);
-        } else if (function_exists('rebuild_course_cache')) {
-            rebuild_course_cache((int)$course->id, true);
-        }
-
         $tx->allow_commit();
+
+        // After the commit: the changed sections are read again (not taken from the old cache).
+        util::purge_course_cache((int)$course->id, [], array_keys($sections));
+
+        self::log_restrictions_updated($course, 'sections', array_keys($sections), $remove);
 
         return ['updated' => $updated, 'requested' => count($sectionids)];
     }
@@ -428,6 +451,149 @@ class activity_planner {
             }
         }
         unset($previewrow);
+
+        return $preview;
+    }
+
+    /**
+     * Appends one or several empty rows (manual entry, without file upload) to the bulk preview.
+     * The edits posted for the existing rows are kept.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param string $defaultshortname Course shortname used to prefill the new rows.
+     * @param int $count Number of empty rows to add.
+     * @return array
+     */
+    public static function add_blank_import_row(array $previewrows, array $postedrows, string $defaultshortname = '',
+            int $count = 1): array {
+        $preview = empty($previewrows) ? [] : self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        for ($i = 0; $i < max(1, $count); $i++) {
+            $rownum = count($preview) + 2;
+            $preview[] = self::preview_import_row([], $rownum, $defaultshortname);
+        }
+
+        return $preview;
+    }
+
+    /**
+     * Removes one row from the bulk preview, keeping the edits posted for the other rows.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param int $index Index of the row to remove.
+     * @param string $defaultshortname Default course shortname.
+     * @return array
+     */
+    public static function remove_import_row(array $previewrows, array $postedrows, int $index, string $defaultshortname = ''): array {
+        $preview = self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        unset($preview[$index]);
+
+        return array_values($preview);
+    }
+
+    /**
+     * Duplicates rows of the bulk preview: each copy is inserted right after its source row.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param int[] $indexes Indexes of the rows to duplicate.
+     * @param string $defaultshortname Default course shortname.
+     * @return array
+     */
+    public static function duplicate_import_rows(array $previewrows, array $postedrows, array $indexes,
+            string $defaultshortname = ''): array {
+        $preview = self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        $indexes = self::valid_indexes($preview, $indexes);
+
+        // From the last to the first, so that the indexes stay valid.
+        foreach (array_reverse($indexes) as $idx) {
+            $source = (array)($preview[$idx]['source_row'] ?? []);
+            array_splice($preview, $idx + 1, 0, [self::preview_import_row($source, 0, $defaultshortname)]);
+        }
+
+        return self::renumber_import_rows($preview);
+    }
+
+    /**
+     * Removes several rows from the bulk preview.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param int[] $indexes Indexes of the rows to remove.
+     * @param string $defaultshortname Default course shortname.
+     * @return array
+     */
+    public static function remove_import_rows(array $previewrows, array $postedrows, array $indexes,
+            string $defaultshortname = ''): array {
+        $preview = self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        foreach (self::valid_indexes($preview, $indexes) as $idx) {
+            unset($preview[$idx]);
+        }
+
+        return self::renumber_import_rows(array_values($preview));
+    }
+
+    /**
+     * Gives the same values (restriction type, date, display) to several rows of the bulk preview.
+     * Only the fields present in $values are changed; the rows are then checked again.
+     *
+     * @param array $previewrows Current preview rows (from the session).
+     * @param array $postedrows Rows posted from the preview table.
+     * @param int[] $indexes Indexes of the rows to change.
+     * @param array $values Field => value (restriction_type, date_direction, date_time, show).
+     * @param string $defaultshortname Default course shortname.
+     * @return array
+     */
+    public static function apply_values_to_import_rows(array $previewrows, array $postedrows, array $indexes,
+            array $values, string $defaultshortname = ''): array {
+        $preview = self::rebuild_import_preview($previewrows, $postedrows, $defaultshortname);
+        $allowed = array_flip(['restriction_type', 'date_direction', 'date_time', 'show']);
+        $values = array_intersect_key($values, $allowed);
+
+        foreach (self::valid_indexes($preview, $indexes) as $idx) {
+            $source = (array)($preview[$idx]['source_row'] ?? []);
+            foreach ($values as $field => $value) {
+                $source[$field] = (string)$value;
+            }
+            $preview[$idx] = self::preview_import_row($source, 0, $defaultshortname);
+        }
+
+        return self::renumber_import_rows($preview);
+    }
+
+    /**
+     * Keeps the existing, distinct indexes, in ascending order.
+     *
+     * @param array $preview Preview rows.
+     * @param array $indexes Requested indexes.
+     * @return int[]
+     */
+    private static function valid_indexes(array $preview, array $indexes): array {
+        $valid = [];
+        foreach ($indexes as $idx) {
+            $idx = (int)$idx;
+            if (isset($preview[$idx])) {
+                $valid[$idx] = $idx;
+            }
+        }
+        ksort($valid);
+
+        return array_values($valid);
+    }
+
+    /**
+     * Renumbers the "Line" column after rows were added, duplicated or removed.
+     *
+     * @param array $preview Preview rows.
+     * @return array
+     */
+    private static function renumber_import_rows(array $preview): array {
+        $preview = array_values($preview);
+        foreach ($preview as $idx => &$row) {
+            $row['rownum'] = $idx + 2;
+        }
+        unset($row);
 
         return $preview;
     }

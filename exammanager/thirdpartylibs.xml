@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<libraries>
+  <library>
+    <location>thirdparty/fullcalendar</location>
+    <name>FullCalendar (standard bundle)</name>
+    <description>JavaScript event calendar used by the exam calendar page.</description>
+    <version>6.1.15</version>
+    <license>MIT</license>
+    <licenseversion></licenseversion>
+    <repository>https://github.com/fullcalendar/fullcalendar</repository>
+  </library>
+</libraries>

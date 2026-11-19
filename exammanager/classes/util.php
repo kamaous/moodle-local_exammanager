@@ -29,6 +29,58 @@ defined('MOODLE_INTERNAL') || die();
 
 class util {
 
+    /** Maximum number of empty rows that can be added at once in manual entry. */
+    const MAX_MANUAL_ROWS = 50;
+
+    /**
+     * Reads the number of manual rows to add from the request, limited to 1..MAX_MANUAL_ROWS.
+     *
+     * @param string $param Request parameter name.
+     * @return int
+     */
+    public static function get_manual_row_count(string $param = 'rowcount'): int {
+        $count = optional_param($param, 1, PARAM_INT);
+        return max(1, min(self::MAX_MANUAL_ROWS, (int)$count));
+    }
+
+    /**
+     * Invalidates the course cache after activities or sections were changed directly in the database.
+     *
+     * Since Moodle 4.0 the course cache is rebuilt partially: only the activities and sections that were
+     * explicitly purged are read again, the others are taken from the previous cache. Bumping the course
+     * cache revision alone is therefore not enough (the course page would keep showing the old dates,
+     * visibility or restrictions until the activity itself is opened). Same sequence as core
+     * update_moduleinfo(): purge each changed activity / section, then rebuild the course cache.
+     *
+     * @param int $courseid Course id.
+     * @param int[] $cmids Course module ids that were changed.
+     * @param int[] $sectionids Course section ids (table ids) that were changed.
+     */
+    public static function purge_course_cache(int $courseid, array $cmids = [], array $sectionids = []): void {
+        $modinfoclass = '\course_modinfo';
+
+        if (class_exists($modinfoclass)) {
+            if (method_exists($modinfoclass, 'purge_course_module_cache')) {
+                foreach (array_unique(array_map('intval', $cmids)) as $cmid) {
+                    if ($cmid > 0) {
+                        $modinfoclass::purge_course_module_cache($courseid, $cmid);
+                    }
+                }
+            }
+            if (method_exists($modinfoclass, 'purge_course_section_cache_by_id')) {
+                foreach (array_unique(array_map('intval', $sectionids)) as $sectionid) {
+                    if ($sectionid > 0) {
+                        $modinfoclass::purge_course_section_cache_by_id($courseid, $sectionid);
+                    }
+                }
+            }
+        }
+
+        // Partial rebuild (Moodle 4.0+): the purged items are rebuilt, the rest is reused.
+        // On older versions the third argument is simply ignored and the whole cache is cleared.
+        rebuild_course_cache($courseid, true, true);
+    }
+
     /**
      * Generates a unique code (5 digits).
      */

@@ -29,7 +29,6 @@ $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/local/exammanager/dashboard.php'));
 $PAGE->set_title(get_string('pluginname', 'local_exammanager'));
 $PAGE->set_heading(get_string('pluginname', 'local_exammanager'));
-$PAGE->requires->js(new moodle_url('https://cdn.jsdelivr.net/npm/chart.js'));
 global $DB, $OUTPUT;
 $totlexams = $DB->count_records('local_exammanager_codes');
 $roomsused = (int)$DB->count_records_sql("SELECT COUNT(DISTINCT room) FROM {local_exammanager_codes}");
@@ -115,17 +114,21 @@ if ($avgdurationseconds <= 0) {
 } else {
     $avgdurationlabel = intdiv($avgdurationseconds, 3600) . ' h ' . str_pad((string)intdiv($avgdurationseconds % 3600, 60), 2, '0', STR_PAD_LEFT) . ' min';
 }
-$chartcanvasid = 'exammanager-chart';
-$PAGE->requires->js_call_amd('local_exammanager/dashboard_chart', 'init', [
-    $chartcanvasid,
-    [
-        get_string('totlexams', 'local_exammanager'),
-        get_string('roomsused', 'local_exammanager'),
-        get_string('teachersused', 'local_exammanager'),
-        get_string('todaysexams', 'local_exammanager'),
-    ],
-    [(int)$totlexams, (int)$roomsused, (int)$teachersused, (int)$todaysexams],
+// Analytics chart: Moodle core chart API (no external JavaScript library).
+$chart = new \core\chart_bar();
+$chart->add_series(new \core\chart_series(
+    get_string('analyticschart', 'local_exammanager'),
+    [(int)$totlexams, (int)$roomsused, (int)$teachersused, (int)$todaysexams]
+));
+$chart->set_labels([
+    get_string('totlexams', 'local_exammanager'),
+    get_string('roomsused', 'local_exammanager'),
+    get_string('teachersused', 'local_exammanager'),
+    get_string('todaysexams', 'local_exammanager'),
 ]);
+if (method_exists($chart, 'set_legend_options')) {
+    $chart->set_legend_options(['display' => false]);
+}
 
 echo $OUTPUT->header();
 echo html_writer::start_div('local-exammanager-app');
@@ -159,10 +162,10 @@ echo $OUTPUT->render_from_template('local_exammanager/metric_grid', [
     }, $metrics),
 ]);
 
-echo $OUTPUT->render_from_template('local_exammanager/chart_panel', [
-    'title' => get_string('analyticschart', 'local_exammanager'),
-    'canvasid' => $chartcanvasid,
-]);
+echo html_writer::start_div('local-exammanager-panel');
+echo html_writer::tag('h3', s(get_string('analyticschart', 'local_exammanager')), ['class' => 'local-exammanager-sectiontitle']);
+echo $OUTPUT->render($chart);
+echo html_writer::end_div();
 
 echo html_writer::end_div();
 echo $OUTPUT->footer();
