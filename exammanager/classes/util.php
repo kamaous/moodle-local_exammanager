@@ -44,6 +44,27 @@ class util {
     }
 
     /**
+     * Reads the duration of an exam, in minutes.
+     *
+     * @param mixed $value Value typed in the table or read from the planning file.
+     * @return int|null|false Minutes (0 = no time limit), null when empty (keep the quiz's current
+     *         time limit), false when the value is not a whole number of minutes >= 0.
+     */
+    public static function parse_time_limit_minutes($value) {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return null;
+        }
+        // Spreadsheets may give "90.0" or "90,0".
+        $value = str_replace(',', '.', $value);
+        if (!is_numeric($value) || (float)$value < 0 || floor((float)$value) != (float)$value) {
+            return false;
+        }
+
+        return (int)$value;
+    }
+
+    /**
      * Invalidates the course cache after activities or sections were changed directly in the database.
      *
      * Since Moodle 4.0 the course cache is rebuilt partially: only the activities and sections that were
@@ -190,12 +211,9 @@ class util {
             return [false, get_string('validation_closeafteropen', 'local_exammanager')];
         }
 
-        if (!isset($row['time_limit']) || $row['time_limit'] === '') {
-            return [false, get_string('durationmissing', 'local_exammanager')];
-        }
-
-        if ((int)$row['time_limit'] <= 0) {
-            return [false, get_string('validation_durationrequired', 'local_exammanager')];
+        // Duration is optional: empty = keep the current time limit of the quiz, 0 = no time limit.
+        if (self::parse_time_limit_minutes($row['time_limit'] ?? '') === false) {
+            return [false, get_string('validation_durationinvalid', 'local_exammanager')];
         }
 
         $accessaction = self::normalize_access_action($row);

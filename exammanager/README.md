@@ -31,6 +31,8 @@ validation before anything is written to the database.
   them the same opening/closing dates, duration, access-code action or SEB
   action in one go, or to duplicate or delete them; each row can also be
   duplicated on its own.
+- **Optional duration**: leave it empty to keep the quiz's current time
+  limit, or enter 0 for no time limit.
 - Editable preview: correct the course, quiz, dates and duration directly
   in the table, with live client-side validation before submission.
 - Quiz picker limited to the active quizzes of the matched course (deleted/

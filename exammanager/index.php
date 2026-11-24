@@ -521,9 +521,10 @@ if (in_array($action, ['duplicaterow', 'selapply', 'selduplicate', 'seldelete'],
                         $values[$field] = $normalized !== '' ? $normalized : $value;
                     }
                 }
-                $timelimit = trim((string)($bulk['time_limit'] ?? ''));
-                if ($timelimit !== '' && (int)$timelimit > 0) {
-                    $values['time_limit'] = (string)(int)$timelimit;
+                // Empty = duration not changed in the selected rows; 0 = no time limit.
+                $timelimit = \local_exammanager\util::parse_time_limit_minutes($bulk['time_limit'] ?? '');
+                if (is_int($timelimit)) {
+                    $values['time_limit'] = (string)$timelimit;
                 }
                 foreach (['access_code_action', 'seb_action'] as $field) {
                     $value = trim((string)($bulk[$field] ?? ''));
@@ -707,8 +708,8 @@ if (!empty($rows)) {
             . html_writer::empty_tag('input', ['type' => 'datetime-local', 'name' => 'bulk[close_time]', 'class' => 'form-control'])
             . '</label>';
         echo '<label>' . get_string('col_durationminutes', 'local_exammanager')
-            . html_writer::empty_tag('input', ['type' => 'number', 'name' => 'bulk[time_limit]', 'min' => '1', 'step' => '1',
-                'class' => 'form-control'])
+            . html_writer::empty_tag('input', ['type' => 'number', 'name' => 'bulk[time_limit]', 'min' => '0', 'step' => '1',
+                'class' => 'form-control', 'placeholder' => get_string('duration_nolimit_hint', 'local_exammanager')])
             . '</label>';
         echo '<label>' . get_string('col_accessaction', 'local_exammanager')
             . html_writer::select($bulkactionoptions, 'bulk[access_code_action]', '', false, ['class' => 'form-select custom-select'])
@@ -794,7 +795,13 @@ if (!empty($rows)) {
             echo html_writer::tag('td', s((string)($r['quiz_name'] ?? '')), ['class' => 'col-quizselect']);
             echo html_writer::tag('td', s($opendisplay), ['class' => 'col-open']);
             echo html_writer::tag('td', s($closedisplay), ['class' => 'col-close']);
-            echo html_writer::tag('td', s((string)($r['time_limit'] ?? '')), ['class' => 'col-duration']);
+            $lockedduration = trim((string)($r['time_limit'] ?? ''));
+            if ($lockedduration === '') {
+                $lockedduration = get_string('duration_unchanged', 'local_exammanager');
+            } else if ($lockedduration === '0') {
+                $lockedduration = get_string('duration_nolimit', 'local_exammanager');
+            }
+            echo html_writer::tag('td', s($lockedduration), ['class' => 'col-duration']);
             echo html_writer::tag('td', s($actionlabels[$lockedaccess] ?? $lockedaccess), ['class' => 'col-accessaction']);
             echo html_writer::tag('td', s($actionlabels[$lockedseb] ?? $lockedseb), ['class' => 'col-sebaction']);
             echo html_writer::tag('td', s($r['access_code'] ?? ''), ['class' => 'col-accesscode']);
@@ -846,7 +853,9 @@ if (!empty($rows)) {
             'class' => 'form-control exammanager-duration-input',
             'min' => '0',
             'step' => '1',
-            'style' => 'width:100px;'
+            'placeholder' => get_string('duration_unchanged', 'local_exammanager'),
+            'title' => get_string('duration_help', 'local_exammanager'),
+            'style' => 'width:110px;'
         ]);
 
         $accessaction = (string)($r['access_code_action'] ?? \local_exammanager\util::normalize_access_action($r));
@@ -994,6 +1003,7 @@ if (!empty($rows)) {
         echo '<button class="btn btn-success" type="submit" name="action" value="program" id="exammanager-program-btn" ' . ($isprogrammode ? '' : 'disabled') . '>' . get_string('programexams', 'local_exammanager') . '</button>';
         echo '</div>';
         echo '<div class="local-exammanager-muted small" style="margin-top:8px;">' . get_string('manualrow_refreshhint', 'local_exammanager') . '</div>';
+        echo '<div class="local-exammanager-muted small">' . get_string('duration_help', 'local_exammanager') . '</div>';
 
         $PAGE->requires->js_call_amd('local_exammanager/preview_validation', 'init');
         $PAGE->requires->js_call_amd('local_exammanager/row_selection', 'init', ['#exammanager-preview-form']);

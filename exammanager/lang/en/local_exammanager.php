@@ -403,3 +403,10 @@ $string['privacy:metadata:codes:course_shortname'] = 'Short name of the course o
 $string['privacy:metadata:codes:timeopen'] = 'Opening date of the exam.';
 $string['privacy:metadata:codes:timeclose'] = 'Closing date of the exam.';
 $string['privacy:metadata:codes:timemodified'] = 'Date of the last programming.';
+
+// Optional exam duration.
+$string['validation_durationinvalid'] = 'The duration must be a whole number of minutes (0 = no time limit, empty = unchanged).';
+$string['duration_unchanged'] = 'Unchanged';
+$string['duration_nolimit'] = 'No limit';
+$string['duration_nolimit_hint'] = '0 = no limit';
+$string['duration_help'] = 'Duration (optional): leave empty to keep the current time limit of the quiz; enter 0 for no time limit.';

@@ -403,7 +403,17 @@ class manager {
 
             $timeopen = util::parse_datetime((string)($row['open_time'] ?? ''));
             $timeclose = util::parse_datetime((string)($row['close_time'] ?? ''));
-            $timelimit = ((int)($row['time_limit'] ?? 0)) * 60;
+            // Optional duration: empty = keep the quiz's current time limit, 0 = no time limit.
+            $timelimitminutes = util::parse_time_limit_minutes($row['time_limit'] ?? '');
+            if ($timelimitminutes === false) {
+                return [
+                    'status' => 'ERROR',
+                    'message' => get_string('validation_durationinvalid', 'local_exammanager'),
+                    'access_code' => '',
+                    'seb_exit_code' => ''
+                ];
+            }
+            $timelimit = ($timelimitminutes === null) ? (int)$quiz->timelimit : $timelimitminutes * 60;
 
             $tx = $DB->start_delegated_transaction();
 
@@ -411,7 +421,9 @@ class manager {
             $q->id = $quiz->id;
             $q->timeopen = $timeopen;
             $q->timeclose = $timeclose;
-            $q->timelimit = $timelimit;
+            if ($timelimitminutes !== null) {
+                $q->timelimit = $timelimit;
+            }
 
             if ($accessaction === 'generate' || $accessaction === 'disable') {
                 $q->password = $access;

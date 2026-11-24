@@ -403,3 +403,10 @@ $string['privacy:metadata:codes:course_shortname'] = 'Nom abrégé du cours du t
 $string['privacy:metadata:codes:timeopen'] = 'Date d\'ouverture de l\'examen.';
 $string['privacy:metadata:codes:timeclose'] = 'Date de fermeture de l\'examen.';
 $string['privacy:metadata:codes:timemodified'] = 'Date de la dernière programmation.';
+
+// Optional exam duration.
+$string['validation_durationinvalid'] = 'La durée doit être un nombre entier de minutes (0 = sans limite, vide = inchangée).';
+$string['duration_unchanged'] = 'Inchangée';
+$string['duration_nolimit'] = 'Sans limite';
+$string['duration_nolimit_hint'] = '0 = sans limite';
+$string['duration_help'] = 'Durée (facultative) : laissez vide pour conserver la durée actuelle du test ; saisissez 0 pour un test sans limite de temps.';

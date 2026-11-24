@@ -31,7 +31,7 @@ define(['core/str'], function(Str) {
             {key: 'validation_datesrequired', component: 'local_exammanager'},
             {key: 'validation_dateinvalid', component: 'local_exammanager'},
             {key: 'validation_closeafteropen', component: 'local_exammanager'},
-            {key: 'validation_durationrequired', component: 'local_exammanager'},
+            {key: 'validation_durationinvalid', component: 'local_exammanager'},
             {key: 'validation_quiznotselected', component: 'local_exammanager'},
             {key: 'validation_correctionneeded', component: 'local_exammanager'}
         ]).then(function(results) {
@@ -40,7 +40,7 @@ define(['core/str'], function(Str) {
                 datesrequired: results[1],
                 dateinvalid: results[2],
                 closeafteropen: results[3],
-                durationrequired: results[4],
+                durationinvalid: results[4],
                 quiznotselected: results[5],
                 correctionneeded: results[6]
             };
@@ -83,8 +83,10 @@ define(['core/str'], function(Str) {
             errors.push(strings.closeafteropen);
         }
 
-        if (durationValue === '' || Number(durationValue) <= 0) {
-            errors.push(strings.durationrequired);
+        // Duration is optional: empty = keep the quiz's current time limit, 0 = no time limit.
+        var durationBadInput = durationInput && durationInput.validity && durationInput.validity.badInput;
+        if (durationBadInput || (durationValue !== '' && !/^\d+$/.test(durationValue))) {
+            errors.push(strings.durationinvalid);
         }
 
         if (quizRequired === '1' && (!quizSelect || !quizSelect.value)) {
