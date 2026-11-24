@@ -24,6 +24,15 @@ validation before anything is written to the database.
 ### Exam programming (`/local/exammanager/index.php`)
 - Drag-and-drop upload of a CSV / XLSX / XLS planning file, with a
   downloadable Excel template.
+- **Manual entry without a file**: start a manual entry and use the
+  "Add a row" button to program a single exam (or a few) directly in the
+  table; any row that is not yet programmed can be deleted.
+- **Row selection and bulk operations**: tick rows (or select all) to give
+  them the same opening/closing dates, duration, access-code action or SEB
+  action in one go, or to duplicate or delete them; each row can also be
+  duplicated on its own.
+- **Optional duration**: leave it empty to keep the quiz's current time
+  limit, or enter 0 for no time limit.
 - Editable preview: correct the course, quiz, dates and duration directly
   in the table, with live client-side validation before submission.
 - Quiz picker limited to the active quizzes of the matched course (deleted/
@@ -35,7 +44,8 @@ validation before anything is written to the database.
   disabled, every quiz gets its own unique codes.
 - **Post-programming lock**: once a batch is programmed, the results become
   read-only and no further edits or re-programming are possible (enforced
-  both in the UI and on the server) until a new file is uploaded.
+  both in the UI and on the server) until a new file is uploaded
+  or a new manual entry is started.
 - Automatically reveals the quiz activity and its section if they were
   hidden.
 - CSV, Excel and execution log exports of every programmed batch.
@@ -48,13 +58,16 @@ validation before anything is written to the database.
 - Average number of participants per scheduled test.
 - Average participation rate per course.
 - Average attempt duration.
-- An analytics chart (Chart.js).
+- An analytics chart (Moodle core chart API, no external library).
 
 ### Other screens
 - **Activity planner**: bulk availability-restriction planning for other
   course activities and sections (by date, grade, user profile field, or a
-  combined restriction set), including a CSV/XLSX bulk-upload mode.
-- **Calendar**: an interactive FullCalendar view of every scheduled exam,
+  combined restriction set), including a CSV/XLSX bulk-upload mode and a
+  manual entry mode ("Add a row" / "Delete") that needs no file, with row
+  duplication and operations on the selected rows (same date, display,
+  duplicate, delete).
+- **Calendar**: an interactive FullCalendar view (library shipped with the plugin) of every scheduled exam,
   with room and supervisor conflict detection.
 - **History**: a filterable, paginated history of every scheduled exam
   (statuses: scheduled, running, finished, hidden, error), with CSV export.

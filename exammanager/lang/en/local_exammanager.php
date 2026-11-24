@@ -353,3 +353,60 @@ $string['historystatusrunning'] = 'Running';
 $string['historystatusfinished'] = 'Finished';
 $string['historystatushidden'] = 'Scheduled but hidden';
 $string['historystatuserror'] = 'Issue';
+
+// Manual entry (add a row without uploading a file).
+$string['manualentry_title'] = 'Manual entry (without a file)';
+$string['manualentry_help'] = 'To program one or a few exams without preparing a file, start a manual entry, then use the "Add a row" button to add further exams. Starting a manual entry replaces the current preview.';
+$string['manualentry_activities_help'] = 'To plan one or a few restrictions without preparing a file, start a manual entry, then use the "Add a row" button to add further rows. Starting a manual entry replaces the current preview.';
+$string['manualentry_start'] = 'Start a manual entry';
+$string['manualentry_started'] = 'Manual entry started: fill in the row, then refresh the preview.';
+$string['manualrow_add'] = 'Add a row';
+$string['manualrow_added'] = 'A new row has been added.';
+$string['manualrow_delete'] = 'Delete';
+$string['manualrow_deleted'] = 'The row has been deleted.';
+$string['manualrow_actions'] = 'Actions';
+$string['manualrow_fillhint'] = 'New row: enter the course, the dates and the duration, then refresh the preview to choose the quiz.';
+$string['manualrow_refreshhint'] = 'After entering or changing a course short name, click "Refresh preview" to load the list of its quizzes.';
+$string['manualrow_count'] = 'Number of rows';
+$string['manualrows_add'] = 'Add these rows';
+$string['manualrows_added'] = '{$a} new rows have been added.';
+
+// Row selection, duplication and operations on several rows.
+$string['bulk_title'] = 'Operations on the selected rows';
+$string['bulk_nochange'] = '- Do not change -';
+$string['bulk_apply'] = 'Apply to selection';
+$string['bulk_duplicate'] = 'Duplicate selection';
+$string['bulk_delete'] = 'Delete selection';
+$string['bulk_help'] = 'Tick rows, fill in only the fields to change (empty fields change nothing), then click "Apply to selection".';
+$string['bulk_selectall'] = 'Select all';
+$string['bulk_selectrow'] = 'Select row {$a}';
+$string['bulk_selectioncount'] = '{$a} row(s) selected';
+$string['bulk_confirmdelete'] = 'Delete the {$a} selected row(s)?';
+$string['bulk_noselection'] = 'No row selected.';
+$string['bulk_nothingtoapply'] = 'Nothing to apply: fill in at least one field.';
+$string['bulk_applied'] = 'Values applied to {$a} row(s).';
+$string['bulk_duplicated'] = '{$a} row(s) duplicated.';
+$string['bulk_deleted'] = '{$a} row(s) deleted.';
+$string['rowduplicate'] = 'Duplicate';
+$string['rowduplicated'] = 'The row has been duplicated.';
+
+// Security fixes: events (traceability) and privacy metadata.
+$string['event_examprogrammed'] = 'Exam programmed';
+$string['event_restrictionsupdated'] = 'Access restrictions updated';
+$string['privacy:metadata:codes'] = 'Exams programmed with the exam manager (dates, duration, access and SEB settings).';
+$string['privacy:metadata:codes:usermodified'] = 'The user who last programmed the exam.';
+$string['privacy:metadata:codes:teacher'] = 'Name of the supervisor entered in the planning (free text).';
+$string['privacy:metadata:codes:room'] = 'Room entered in the planning.';
+$string['privacy:metadata:codes:sessionname'] = 'Exam session entered in the planning.';
+$string['privacy:metadata:codes:quizname'] = 'Name of the programmed quiz.';
+$string['privacy:metadata:codes:course_shortname'] = 'Short name of the course of the quiz.';
+$string['privacy:metadata:codes:timeopen'] = 'Opening date of the exam.';
+$string['privacy:metadata:codes:timeclose'] = 'Closing date of the exam.';
+$string['privacy:metadata:codes:timemodified'] = 'Date of the last programming.';
+
+// Optional exam duration.
+$string['validation_durationinvalid'] = 'The duration must be a whole number of minutes (0 = no time limit, empty = unchanged).';
+$string['duration_unchanged'] = 'Unchanged';
+$string['duration_nolimit'] = 'No limit';
+$string['duration_nolimit_hint'] = '0 = no limit';
+$string['duration_help'] = 'Duration (optional): leave empty to keep the current time limit of the quiz; enter 0 for no time limit.';

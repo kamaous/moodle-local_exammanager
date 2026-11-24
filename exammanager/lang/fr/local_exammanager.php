@@ -353,3 +353,60 @@ $string['historystatusrunning'] = 'En cours';
 $string['historystatusfinished'] = 'Terminé';
 $string['historystatushidden'] = 'Programmé mais caché';
 $string['historystatuserror'] = 'Anomalie';
+
+// Manual entry (add a row without uploading a file).
+$string['manualentry_title'] = 'Saisie manuelle (sans fichier)';
+$string['manualentry_help'] = 'Pour programmer un seul ou quelques examens sans préparer de fichier, démarrez une saisie manuelle puis utilisez le bouton « Ajouter une ligne » pour ajouter d\'autres examens. Démarrer une saisie manuelle remplace la prévisualisation en cours.';
+$string['manualentry_activities_help'] = 'Pour programmer une seule ou quelques restrictions sans préparer de fichier, démarrez une saisie manuelle puis utilisez le bouton « Ajouter une ligne » pour ajouter d\'autres lignes. Démarrer une saisie manuelle remplace la prévisualisation en cours.';
+$string['manualentry_start'] = 'Démarrer une saisie manuelle';
+$string['manualentry_started'] = 'Saisie manuelle démarrée : renseignez la ligne puis actualisez la prévisualisation.';
+$string['manualrow_add'] = 'Ajouter une ligne';
+$string['manualrow_added'] = 'Une nouvelle ligne a été ajoutée.';
+$string['manualrow_delete'] = 'Supprimer';
+$string['manualrow_deleted'] = 'La ligne a été supprimée.';
+$string['manualrow_actions'] = 'Actions';
+$string['manualrow_fillhint'] = 'Nouvelle ligne : saisissez le cours, les dates et la durée, puis actualisez la prévisualisation pour choisir le quiz.';
+$string['manualrow_refreshhint'] = 'Après avoir saisi ou modifié le nom abrégé d\'un cours, cliquez sur « Actualiser la prévisualisation » pour charger la liste de ses quiz.';
+$string['manualrow_count'] = 'Nombre de lignes';
+$string['manualrows_add'] = 'Ajouter ces lignes';
+$string['manualrows_added'] = '{$a} nouvelles lignes ont été ajoutées.';
+
+// Row selection, duplication and operations on several rows.
+$string['bulk_title'] = 'Opérations sur les lignes sélectionnées';
+$string['bulk_nochange'] = '- Ne pas modifier -';
+$string['bulk_apply'] = 'Appliquer à la sélection';
+$string['bulk_duplicate'] = 'Dupliquer la sélection';
+$string['bulk_delete'] = 'Supprimer la sélection';
+$string['bulk_help'] = 'Cochez des lignes, renseignez uniquement les champs à modifier (un champ vide ne change rien), puis cliquez sur « Appliquer à la sélection ».';
+$string['bulk_selectall'] = 'Tout sélectionner';
+$string['bulk_selectrow'] = 'Sélectionner la ligne {$a}';
+$string['bulk_selectioncount'] = '{$a} ligne(s) sélectionnée(s)';
+$string['bulk_confirmdelete'] = 'Supprimer les {$a} ligne(s) sélectionnée(s) ?';
+$string['bulk_noselection'] = 'Aucune ligne sélectionnée.';
+$string['bulk_nothingtoapply'] = 'Rien à appliquer : renseignez au moins un champ.';
+$string['bulk_applied'] = 'Valeurs appliquées à {$a} ligne(s).';
+$string['bulk_duplicated'] = '{$a} ligne(s) dupliquée(s).';
+$string['bulk_deleted'] = '{$a} ligne(s) supprimée(s).';
+$string['rowduplicate'] = 'Dupliquer';
+$string['rowduplicated'] = 'La ligne a été dupliquée.';
+
+// Security fixes: events (traceability) and privacy metadata.
+$string['event_examprogrammed'] = 'Examen programmé';
+$string['event_restrictionsupdated'] = 'Restrictions d\'accès modifiées';
+$string['privacy:metadata:codes'] = 'Examens programmés avec le gestionnaire d\'examens (dates, durée, réglages d\'accès et SEB).';
+$string['privacy:metadata:codes:usermodified'] = 'Utilisateur ayant programmé l\'examen en dernier.';
+$string['privacy:metadata:codes:teacher'] = 'Nom du surveillant saisi dans le planning (texte libre).';
+$string['privacy:metadata:codes:room'] = 'Salle saisie dans le planning.';
+$string['privacy:metadata:codes:sessionname'] = 'Session d\'examen saisie dans le planning.';
+$string['privacy:metadata:codes:quizname'] = 'Nom du test programmé.';
+$string['privacy:metadata:codes:course_shortname'] = 'Nom abrégé du cours du test.';
+$string['privacy:metadata:codes:timeopen'] = 'Date d\'ouverture de l\'examen.';
+$string['privacy:metadata:codes:timeclose'] = 'Date de fermeture de l\'examen.';
+$string['privacy:metadata:codes:timemodified'] = 'Date de la dernière programmation.';
+
+// Optional exam duration.
+$string['validation_durationinvalid'] = 'La durée doit être un nombre entier de minutes (0 = sans limite, vide = inchangée).';
+$string['duration_unchanged'] = 'Inchangée';
+$string['duration_nolimit'] = 'Sans limite';
+$string['duration_nolimit_hint'] = '0 = sans limite';
+$string['duration_help'] = 'Durée (facultative) : laissez vide pour conserver la durée actuelle du test ; saisissez 0 pour un test sans limite de temps.';

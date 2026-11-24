@@ -44,5 +44,19 @@ function xmldb_local_exammanager_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026041801, 'local', 'exammanager');
     }
 
+    if ($oldversion < 2026111700) {
+        // Traceability: user who last programmed each exam.
+        $table = new xmldb_table('local_exammanager_codes');
+        $field = new xmldb_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timemodified');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $key = new xmldb_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+        $dbman->add_key($table, $key);
+
+        upgrade_plugin_savepoint(true, 2026111700, 'local', 'exammanager');
+    }
+
     return true;
 }
